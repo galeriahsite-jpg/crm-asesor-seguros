@@ -78,7 +78,9 @@ export default function LumoCapture() {
     return () => { if (recRef.current) recRef.current.stop(); };
   }, []);
 
-  if (pathname === '/login') return null;
+  // Ocultar en páginas públicas (login, landing y aviso de privacidad)
+  const RUTAS_PUBLICAS = ['/login', '/solicitud', '/aviso-de-privacidad'];
+  if (RUTAS_PUBLICAS.some(r => pathname.startsWith(r))) return null;
 
   async function cargarPersonas(): Promise<Persona[]> {
     const { data: pros } = await supabase.from('prospectos').select('id, nombre, telefono, estado').neq('estado', 'Convertido').neq('estado', 'Perdido');

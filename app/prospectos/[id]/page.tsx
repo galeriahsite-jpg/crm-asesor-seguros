@@ -50,6 +50,37 @@ export default function FichaProspecto() {
   const [oppAseguradora, setOppAseguradora] = useState('AXA');
   const [oppPrima, setOppPrima] = useState('');
 
+  // Mensaje de primer contacto generado por LUMO (borrador editable)
+  const [mensajeIA, setMensajeIA] = useState('');
+  const [generandoMsg, setGenerandoMsg] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  async function generarMensajeIA() {
+    setGenerandoMsg(true);
+    setErrorMsg('');
+    setMensajeIA('');
+    try {
+      // La API solo recibe el ID; los datos reales los lee del CRM con tu sesión.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setErrorMsg('Tu sesión ha expirado.'); setGenerandoMsg(false); return; }
+
+      const res = await fetch('/api/generar-mensaje', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ prospectoId }),
+      });
+      const data = await res.json();
+      if (!res.ok) setErrorMsg(data.error || 'No se pudo generar el mensaje.');
+      else setMensajeIA(data.mensaje);
+    } catch {
+      setErrorMsg('Error de conexión.');
+    }
+    setGenerandoMsg(false);
+  }
+
   useEffect(() => {
     if (prospectoId) cargarFicha(prospectoId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,7 +245,34 @@ export default function FichaProspecto() {
             <button onClick={() => { setMostrarFormCita(!mostrarFormCita); setMostrarFormDiag(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-azul-soft text-azul border border-azul/20 font-semibold py-2 rounded-lg hover:bg-azul hover:text-white transition-colors">Agendar Cita</button>
             <button onClick={() => { setMostrarFormDiag(!mostrarFormDiag); setMostrarFormCita(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-paper text-ink border border-ink/15 font-semibold py-2 rounded-lg hover:bg-ink hover:text-white transition-colors">Diagnóstico</button>
             <button onClick={() => { setMostrarFormOpp(!mostrarFormOpp); setMostrarFormCita(false); setMostrarFormDiag(false); }} className="text-center text-sm bg-rojo-soft text-rojo border border-rojo/20 font-semibold py-2 rounded-lg hover:bg-rojo hover:text-white transition-colors">Cotizar</button>
+            <button onClick={generarMensajeIA} disabled={generandoMsg} className="col-span-2 text-center text-sm bg-azul text-white font-semibold py-2 rounded-lg hover:bg-azul-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              <Icon name="edit" size={15} /> {generandoMsg ? 'Redactando...' : 'Mensaje LUMO'}
+            </button>
           </div>
+
+          {errorMsg && <p className="text-rojo text-sm font-medium bg-rojo-soft rounded-lg p-2 mt-3">{errorMsg}</p>}
+
+          {mensajeIA && (
+            <div className="mt-4 bg-paper lumo-lines p-3 rounded-lg border border-ink/10">
+              <p className="text-xs text-ink-faint uppercase mb-2 font-bold tracking-wide">Borrador · revísalo antes de enviar</p>
+              <textarea
+                value={mensajeIA}
+                onChange={(e) => setMensajeIA(e.target.value)}
+                rows={5}
+                className="w-full bg-transparent text-ink text-sm resize-none focus:outline-none"
+              />
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => navigator.clipboard.writeText(mensajeIA)} className="lumo-btn-ghost px-3 py-2 text-xs">Copiar</button>
+                {prospecto?.telefono && (
+                  <a
+                    href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(mensajeIA)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-xl border border-verde/20 font-semibold"
+                  >Enviar por WhatsApp</a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {mostrarFormCita && (
