@@ -33,7 +33,7 @@ No eres un chatbot. No conversas. Devuelves acciones estructuradas.
 HOY ES: ${hoy} (usa esta fecha para resolver expresiones como "mañana", "el lunes", "la próxima semana").
 
 DIRECTORIO ACTUAL DEL ASESOR (para vincular acciones a personas existentes):
-${directorio}
+ ${directorio}
 
 REGLAS:
 1. Devuelve SOLO JSON válido con esta forma exacta:
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       const detalle = await res.text();
       console.error('OpenAI error:', res.status, detalle);
       return Response.json(
-        { error: 'El modelo no respondió correctamente. Intenta de nuevo.' },
+        { error: `OpenAI Error (${res.status}): ${detalle}` },
         { status: 502 }
       );
     }

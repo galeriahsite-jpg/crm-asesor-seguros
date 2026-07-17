@@ -52,8 +52,8 @@ export async function POST(req: Request) {
     // Devolvemos tanto el texto original como los datos estructurados
     return NextResponse.json({ texto, datos });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en LUMO dictado:', error);
-    return NextResponse.json({ error: 'Error al procesar el audio' }, { status: 500 });
+    return NextResponse.json({ error: `Error al procesar el audio: ${error.message}` }, { status: 500 });
   }
 }
