@@ -81,11 +81,10 @@ create table if not exists public.polizas (
   user_id uuid not null references auth.users(id) on delete cascade,
   cliente_id uuid not null references public.clientes(id) on delete cascade,
   aseguradora text,
-  numero text,
+  numero_poliza text,   -- ⚠️ nombre exacto que usa el código
   producto text,
-  prima text,
   vencimiento date,
-  estado text,
+  estado text default 'Activa',
   created_at timestamptz not null default now()
 );
 
@@ -150,9 +149,11 @@ create table if not exists public.tramites (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   cliente text,
+  aseguradora text,
+  producto text,
   folio text,
   nota text,
-  estado text,
+  estado text default 'En proceso',
     -- En proceso | Información incompleta | Requisito adicional | Pago pendiente | ...
   prospecto_id uuid references public.prospectos(id) on delete set null,
   cliente_id uuid references public.clientes(id) on delete set null,
@@ -164,9 +165,21 @@ create table if not exists public.diagnosticos (
   user_id uuid not null references auth.users(id) on delete cascade,
   prospecto_id uuid references public.prospectos(id) on delete set null,
   cliente_id uuid references public.clientes(id) on delete set null,
-  nota text,
-  proxima_accion text,
+  cliente text,
+  -- Juego de campos del módulo /diagnosticos
+  edad text,
+  dependientes text,
+  objetivo text,
+  presupuesto text,
+  -- Juego de campos de la ficha 360° (6 preguntas)
+  que_proteger text,
+  riesgo_preocupante text,
+  producto_posible text,
+  aseguradoras_consultar text,
   fecha_decision date,
+  -- Comunes
+  producto_sugerido text,
+  nota text,
   created_at timestamptz not null default now()
 );
 

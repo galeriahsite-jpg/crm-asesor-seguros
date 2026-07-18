@@ -57,18 +57,23 @@ export default function Prospectos() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert("Tu sesión ha expirado."); return; }
 
-    const { error } = await supabase.from('prospectos').insert([{
+    const { data: nuevo, error } = await supabase.from('prospectos').insert([{
       nombre,
       telefono,
       producto,
       nota,
       estado: 'Nuevo',
       user_id: user.id // SELLAMOS EL DATO CON TU ID
-    }]);
+    }]).select().single();
 
     if (error) {
       alert('Hubo un error al guardar');
     } else {
+      void registrarActividad({
+        tipo: 'prospecto_creado',
+        descripcion: `${nombre}${producto ? ` · interés: ${producto}` : ''} · captura rápida`,
+        prospecto_id: nuevo?.id,
+      });
       setNombre(''); setTelefono(''); setProducto(''); setNota('');
       setMostrarForm(false);
       cargarProspectos();

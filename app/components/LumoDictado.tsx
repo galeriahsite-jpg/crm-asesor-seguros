@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { registrarActividad } from '../lib/actividades';
 
 export default function LumoDictado() {
   const [grabando, setGrabando] = useState(false);
@@ -70,7 +71,7 @@ export default function LumoDictado() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('prospectos').insert([{
+    const { data: nuevo, error } = await supabase.from('prospectos').insert([{
       nombre: datos.nombre,
       telefono: datos.telefono,
       producto: datos.producto,
@@ -79,11 +80,16 @@ export default function LumoDictado() {
       proxima_accion: datos.proxima_accion,
       fecha_proxima: datos.fecha_proxima,
       user_id: user.id
-    }]);
+    }]).select().single();
 
     if (error) {
       alert('Error al guardar en la base de datos');
     } else {
+      void registrarActividad({
+        tipo: 'prospecto_creado',
+        descripcion: `${datos.nombre || 'Prospecto'} · vía dictado LUMO`,
+        prospecto_id: nuevo?.id,
+      });
       alert('✅ Prospecto guardado y acción agendada por LUMO.');
       // Limpiar y recargar
       setDatos(null);

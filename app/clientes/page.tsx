@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
+import { registrarActividad } from '../lib/actividades';
 
 type Poliza = {
   id: string;
@@ -53,10 +54,17 @@ export default function Clientes() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('clientes').insert([{ nombre, telefono, user_id: user.id }]);
+    const { data: nuevo, error } = await supabase.from('clientes')
+      .insert([{ nombre, telefono, estado: 'Activo', user_id: user.id }])
+      .select().single();
     if (error) {
       alert('Error al guardar cliente: ' + error.message);
     } else {
+      void registrarActividad({
+        tipo: 'cliente_creado',
+        descripcion: `${nombre} · alta directa`,
+        cliente_id: nuevo?.id,
+      });
       setNombre(''); setTelefono('');
       cargarClientes();
     }
@@ -110,6 +118,11 @@ export default function Clientes() {
     if (error) {
       alert('Error al guardar póliza: ' + error.message);
     } else {
+      void registrarActividad({
+        tipo: 'poliza_registrada',
+        descripcion: `${nProducto} · ${nAseguradora} · vence ${nVencimiento}`,
+        cliente_id: clienteId,
+      });
       setClienteSeleccionado(null);
       setNPoliza(''); setNVencimiento('');
       cargarClientes();
