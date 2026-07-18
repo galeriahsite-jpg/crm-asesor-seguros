@@ -20,10 +20,11 @@ const LIMITE_POR_ASESOR = 30;      // mensajes por hora
 const VENTANA_SEGUNDOS = 3600;
 const MAX_SALIDA_CARACTERES = 700; // control de tamaño de salida
 
+// NOTA: los id de producción son BIGINT (numéricos), no UUID.
 const cuerpoSchema = z.object({
   prospectoId: z.preprocess(
-    v => (typeof v === 'string' ? v.trim() : ''),
-    z.uuid({ error: 'prospectoId inválido.' })
+    v => (typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : ''),
+    z.string().min(1).max(40).regex(/^[0-9a-f-]+$/i, 'prospectoId inválido.')
   ),
 });
 

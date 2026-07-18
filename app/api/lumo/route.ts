@@ -32,8 +32,14 @@ const TIPOS_ACCION = [
 ] as const;
 
 // ── Validación de entrada ──
+// NOTA: los id de producción son BIGINT (numéricos), no UUID.
+// Se aceptan ambos formatos y se normalizan a string.
+const idSchema = z.preprocess(
+  v => (typeof v === 'number' ? String(v) : v),
+  z.string().trim().min(1).max(40).regex(/^[0-9a-f-]+$/i)
+);
 const personaSchema = z.object({
-  id: z.uuid(),
+  id: idSchema,
   nombre: z.string().trim().min(1).max(120),
   tipo: z.enum(['prospecto', 'cliente']),
 });

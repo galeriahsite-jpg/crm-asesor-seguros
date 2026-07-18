@@ -1,4 +1,25 @@
 -- ============================================================
+-- ⚠️ ACTUALIZACIÓN POST-EJECUCIÓN (2026-07-18, aplicada EN VIVO
+-- vía dashboard): el esquema REAL de producción usa IDs BIGINT
+-- (no UUID como asumía este archivo). Lo efectivamente aplicado:
+--   · Índice único normal (user_id, telefono_normalizado) ✓
+--   · DROP de 3 índices/constraints redundantes de intentos previos
+--     (prospectos_telefono_normalizado_unique_idx [global, incorrecto],
+--      prospectos_user_tel_unique, prospectos_user_telefono_unique)
+--   · Funciones en BIGINT: sellar_primer_contacto(bigint,text),
+--     convertir_prospecto_a_cliente(bigint)→bigint,
+--     incrementar_rate_limit(text,int) ✓ + grants/revokes
+--   · servicios.prospecto_id: uuid→bigint (tenía 0 datos)
+--   · Columnas: primer_contacto_at/canal, telefono_normalizado,
+--     fuente, n8n_procesado, numero_poliza, tramites.aseguradora/
+--     producto, diagnosticos.que_proteger/…/fecha_decision ✓
+--   · Tablas actividades/cotizaciones/ai_usage/web_rate_limits ya
+--     existían (bigint) con RLS; políticas de actividades
+--     reforzadas (propiedad de las 3 relaciones) y duplicadas
+--     eliminadas · notify pgrst ✓
+-- El texto de abajo se conserva como REFERENCIA del plan original
+-- (versión uuid). NO volver a correr tal cual sobre producción.
+-- ============================================================
 -- LUMO · REPARACIÓN INTEGRAL · 2026-07-18
 -- Correr en: Supabase Dashboard → SQL Editor → New query → Run
 --
