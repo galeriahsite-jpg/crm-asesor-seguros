@@ -240,9 +240,11 @@ create table if not exists public.ai_usage (
 
 create index if not exists prospectos_user_fecha_idx
   on public.prospectos (user_id, created_at desc);
-create unique index if not exists prospectos_user_telefono_unique_idx
-  on public.prospectos (user_id, telefono_normalizado)
-  where telefono_normalizado is not null;
+-- Índice único NORMAL (no parcial): PostgREST no puede inferir
+-- índices parciales en ON CONFLICT (error 42P10). Los NULL
+-- múltiples están permitidos en índices únicos normales.
+create unique index if not exists prospectos_user_tel_norm_uniq
+  on public.prospectos (user_id, telefono_normalizado);
 create index if not exists idx_prospectos_n8n_pendientes
   on public.prospectos (created_at)
   where n8n_procesado is null and fuente = 'landing';
