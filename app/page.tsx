@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BottomNav, Icon } from './components/lumo';
+import { registrarActividad, sellarPrimerContacto, tiempoTranscurrido } from './lib/actividades';
 
 export default function Home() {
   const router = useRouter();
@@ -17,10 +18,14 @@ export default function Home() {
   type Decision = {
     clave: string;
     registroId: string;
-    tabla: 'prospectos' | 'citas';
+    accion: 'reprogramar_prospecto' | 'reprogramar_cita' | 'contactar_lead' | 'agendar_renovacion' | 'agendar_tramite';
     nombre: string;
     pregunta: string;
     razon: string;
+    etiquetaSi: string;
+    href: string;               // a dónde lleva "Revisar"
+    clienteId?: string | null;  // para agendar citas de renovación
+    urgente?: boolean;
   };
   const [decisiones, setDecisiones] = useState<Decision[]>([]);
 
@@ -72,11 +77,31 @@ export default function Home() {
     cargarDecisiones(hoyStr);
   }
 
-  // ── LUMO · Centro de decisiones ─────────────────────────────
-  // Regla: ningún prospecto, cita o seguimiento abierto se queda
-  // sin próxima acción. Cada sugerencia explica su razón.
+  // ── LUMO · Motor de siguiente mejor acción ──────────────────
+  // Regla: ningún prospecto, cita, trámite o renovación abierta
+  // se queda sin siguiente paso. Cada sugerencia explica su razón
+  // y se resuelve en un toque.
   async function cargarDecisiones(hoyStr: string) {
     const lista: Decision[] = [];
+    const en30Dias = new Date();
+    en30Dias.setDate(en30Dias.getDate() + 30);
+    const en30DiasStr = en30Dias.toISOString().split('T')[0];
+
+    // 0. LEADS NUEVOS SIN PRIMER CONTACTO (lo más urgente: cada
+    //    minuto sin respuesta baja la conversión).
+    const { data: sinContacto } = await supabase
+      .from('prospectos').select('id, nombre, created_at, fuente')
+      .is('primer_contacto_at', null)
+      .eq('estado', 'Nuevo')
+      .order('created_at', { ascending: false }).limit(5);
+    (sinContacto || []).forEach(p => lista.push({
+      clave: `lc-${p.id}`, registroId: p.id, accion: 'contactar_lead', nombre: p.nombre,
+      pregunta: '¿Hacer el primer contacto AHORA?',
+      razon: `Llegó ${tiempoTranscurrido(p.created_at)}${p.fuente === 'landing' ? ' desde una landing' : ''} y nadie lo ha contactado. El objetivo es responder en menos de 5 minutos.`,
+      etiquetaSi: 'Ya lo contacté',
+      href: `/prospectos/${p.id}`,
+      urgente: true,
+    }));
 
     // 1. Prospectos activos SIN próxima acción definida
     const { data: sinAccion } = await supabase
@@ -85,9 +110,11 @@ export default function Home() {
       .neq('estado', 'Convertido').neq('estado', 'Perdido')
       .order('created_at', { ascending: true }).limit(5);
     (sinAccion || []).forEach(p => lista.push({
-      clave: `sa-${p.id}`, registroId: p.id, tabla: 'prospectos', nombre: p.nombre,
+      clave: `sa-${p.id}`, registroId: p.id, accion: 'reprogramar_prospecto', nombre: p.nombre,
       pregunta: '¿Programar seguimiento para mañana?',
       razon: 'No tiene próxima acción definida. Un prospecto sin siguiente paso se enfría.',
+      etiquetaSi: 'Sí, mañana',
+      href: `/prospectos/${p.id}`,
     }));
 
     // 2. Prospectos con seguimiento vencido
@@ -97,9 +124,11 @@ export default function Home() {
       .neq('estado', 'Convertido').neq('estado', 'Perdido')
       .order('fecha_proxima', { ascending: true }).limit(5);
     (vencidos || []).forEach(p => lista.push({
-      clave: `ve-${p.id}`, registroId: p.id, tabla: 'prospectos', nombre: p.nombre,
+      clave: `ve-${p.id}`, registroId: p.id, accion: 'reprogramar_prospecto', nombre: p.nombre,
       pregunta: '¿Reprogramar seguimiento vencido para mañana?',
       razon: `"${p.proxima_accion || 'Seguimiento'}" venció el ${p.fecha_proxima}.`,
+      etiquetaSi: 'Sí, mañana',
+      href: `/prospectos/${p.id}`,
     }));
 
     // 3. Citas pendientes con fecha pasada (sin resultado registrado)
@@ -108,12 +137,48 @@ export default function Home() {
       .eq('estado', 'Pendiente').lt('fecha', hoyStr)
       .order('fecha', { ascending: true }).limit(5);
     (citasPasadas || []).forEach(c => lista.push({
-      clave: `cp-${c.id}`, registroId: c.id, tabla: 'citas', nombre: c.titulo,
+      clave: `cp-${c.id}`, registroId: c.id, accion: 'reprogramar_cita', nombre: c.titulo,
       pregunta: '¿Reprogramar esta cita para mañana?',
       razon: `La cita (${c.tipo}) era el ${c.fecha} y sigue marcada como pendiente, sin resultado.`,
+      etiquetaSi: 'Sí, mañana',
+      href: '/agenda',
     }));
 
-    setDecisiones(lista.slice(0, 8));
+    // 4. Renovaciones en 30 días → agendar llamada de renovación
+    const { data: renovaciones } = await supabase
+      .from('polizas')
+      .select('id, vencimiento, producto, cliente_id, clientes(nombre)')
+      .gte('vencimiento', hoyStr).lte('vencimiento', en30DiasStr)
+      .order('vencimiento', { ascending: true }).limit(4);
+    (renovaciones || []).forEach(pol => {
+      const nombreCliente = (pol as unknown as { clientes?: { nombre?: string } }).clientes?.nombre || 'Cliente';
+      lista.push({
+        clave: `re-${pol.id}`, registroId: pol.id, accion: 'agendar_renovacion',
+        nombre: nombreCliente,
+        pregunta: '¿Agendar llamada de renovación para mañana?',
+        razon: `Su póliza de ${pol.producto || 'seguro'} vence el ${pol.vencimiento}. Contactar antes evita perder la renovación.`,
+        etiquetaSi: 'Agendar llamada',
+        href: pol.cliente_id ? `/clientes/${pol.cliente_id}` : '/clientes',
+        clienteId: pol.cliente_id,
+      });
+    });
+
+    // 5. Trámites atorados → agendar revisión
+    const { data: tramitesAt } = await supabase
+      .from('tramites').select('id, cliente, folio, estado')
+      .in('estado', ['Información incompleta', 'Requisito adicional', 'Pago pendiente'])
+      .limit(3);
+    (tramitesAt || []).forEach(t => lista.push({
+      clave: `tr-${t.id}`, registroId: t.id, accion: 'agendar_tramite',
+      nombre: t.cliente || `Trámite ${t.folio || ''}`,
+      pregunta: '¿Agendar revisión del trámite para mañana?',
+      razon: `El trámite${t.folio ? ` (folio ${t.folio})` : ''} está detenido: "${t.estado}". Cada día atorado retrasa la emisión.`,
+      etiquetaSi: 'Agendar revisión',
+      href: '/tramites',
+    }));
+
+    // Urgentes primero; máximo 10 para no abrumar.
+    setDecisiones([...lista.filter(d => d.urgente), ...lista.filter(d => !d.urgente)].slice(0, 10));
   }
 
   async function resolverDecision(d: Decision, aceptar: boolean) {
@@ -121,15 +186,39 @@ export default function Home() {
       const manana = new Date();
       manana.setDate(manana.getDate() + 1);
       const mananaStr = manana.toISOString().split('T')[0];
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (d.tabla === 'prospectos') {
+      if (d.accion === 'contactar_lead') {
+        // "Ya lo contacté": sella el primer contacto y lo registra.
+        await sellarPrimerContacto(d.registroId, 'otro');
+        await registrarActividad({
+          tipo: 'resultado_contacto',
+          descripcion: 'Primer contacto confirmado desde el Centro de Decisiones',
+          prospecto_id: d.registroId,
+        });
+      } else if (d.accion === 'reprogramar_prospecto') {
         await supabase.from('prospectos')
           .update({ fecha_proxima: mananaStr, proxima_accion: d.clave.startsWith('sa-') ? 'Dar seguimiento' : undefined })
           .eq('id', d.registroId);
-      } else {
+      } else if (d.accion === 'reprogramar_cita') {
         await supabase.from('citas')
           .update({ fecha: mananaStr, estado: 'Reprogramada' })
           .eq('id', d.registroId);
+      } else if (d.accion === 'agendar_renovacion' && user) {
+        await supabase.from('citas').insert([{
+          titulo: d.nombre, fecha: mananaStr, hora: '10:00', tipo: 'Renovación',
+          estado: 'Pendiente', cliente_id: d.clienteId || null, user_id: user.id,
+        }]);
+        await registrarActividad({
+          tipo: 'renovacion_contactada',
+          descripcion: `Llamada de renovación agendada para ${mananaStr}`,
+          cliente_id: d.clienteId || null,
+        });
+      } else if (d.accion === 'agendar_tramite' && user) {
+        await supabase.from('citas').insert([{
+          titulo: `Revisar trámite: ${d.nombre}`, fecha: mananaStr, hora: '10:00',
+          tipo: 'Seguimiento', estado: 'Pendiente', user_id: user.id,
+        }]);
       }
     }
     setDecisiones(prev => prev.filter(x => x.clave !== d.clave));
@@ -212,19 +301,24 @@ export default function Home() {
             </h2>
             <div className="space-y-3">
               {decisiones.map(d => (
-                <div key={d.clave} className="lumo-card p-4">
+                <div key={d.clave} className={`lumo-card p-4 ${d.urgente ? 'border-l-4 border-l-rojo' : ''}`}>
+                  {d.urgente && (
+                    <p className="text-rojo text-[10px] font-bold uppercase tracking-wider mb-1">⚡ Urgente · lead sin contactar</p>
+                  )}
                   <p className="font-bold text-ink">{d.nombre}</p>
                   <p className="text-sm text-ink font-medium mt-0.5">{d.pregunta}</p>
                   <p className="font-hand text-base text-ink-soft mt-1">razón: {d.razon}</p>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {d.urgente && (
+                      <Link href={d.href} className="lumo-btn-danger px-4 py-2 text-xs">Abrir ficha</Link>
+                    )}
                     <button
                       onClick={() => resolverDecision(d, true)}
-                      className="lumo-btn-primary px-4 py-2 text-xs"
-                    >Sí, mañana</button>
-                    <Link
-                      href={d.tabla === 'prospectos' ? `/prospectos/${d.registroId}` : '/agenda'}
-                      className="lumo-btn-ghost px-4 py-2 text-xs"
-                    >Revisar</Link>
+                      className={`px-4 py-2 text-xs ${d.urgente ? 'lumo-btn-ghost' : 'lumo-btn-primary'}`}
+                    >{d.etiquetaSi}</button>
+                    {!d.urgente && (
+                      <Link href={d.href} className="lumo-btn-ghost px-4 py-2 text-xs">Revisar</Link>
+                    )}
                     <button
                       onClick={() => resolverDecision(d, false)}
                       className="text-ink-faint hover:text-ink text-xs px-2"

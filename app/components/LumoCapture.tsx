@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '../../supabaseClient';
 import { Icon } from './lumo';
+import { registrarActividad, sellarPrimerContacto, type TipoActividad } from '../lib/actividades';
 
 type Persona = { id: string; nombre: string; tipo: 'prospecto' | 'cliente'; telefono?: string };
 
@@ -70,7 +71,7 @@ export default function LumoCapture() {
   const [acciones, setAcciones] = useState<AccionRevisada[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [grabando, setGrabando] = useState(false);
-  const [mensajesGenerados, setMensajesGenerados] = useState<{ nombre: string; mensaje: string; telefono?: string }[]>([]);
+  const [mensajesGenerados, setMensajesGenerados] = useState<{ nombre: string; mensaje: string; telefono?: string; prospectoId?: string; clienteId?: string }[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null);
 
@@ -182,7 +183,7 @@ export default function LumoCapture() {
     const seleccionadas = acciones.filter(a => a.incluida);
     const registroCreados = new Map<string, { id: string; tipo: 'prospecto' | 'cliente' }>();
     const resultados: AccionRevisada[] = [];
-    const mensajes: { nombre: string; mensaje: string; telefono?: string }[] = [];
+    const mensajes: { nombre: string; mensaje: string; telefono?: string; prospectoId?: string; clienteId?: string }[] = [];
 
     const resolverPersona = (a: Accion): { id: string; tipo: 'prospecto' | 'cliente'; telefono?: string } | null => {
       if (a.persona_id) {
@@ -298,12 +299,42 @@ export default function LumoCapture() {
 
         } else if (a.tipo === 'generar_mensaje') {
           const persona = resolverPersona(a);
-          mensajes.push({ nombre: a.persona_nombre, mensaje: d.mensaje || '', telefono: persona?.telefono });
+          mensajes.push({
+            nombre: a.persona_nombre, mensaje: d.mensaje || '', telefono: persona?.telefono,
+            prospectoId: persona?.tipo === 'prospecto' ? persona.id : undefined,
+            clienteId: persona?.tipo === 'cliente' ? persona.id : undefined,
+          });
           resultados.push({ ...a, resultado: 'Mensaje listo abajo' });
         }
       } catch (e) {
         resultados.push({ ...a, resultado: e instanceof Error ? e.message : 'Error', error: true });
       }
+    }
+
+    // Línea de tiempo universal — best effort, no bloquea el flujo
+    const MAPA_ACTIVIDAD: Record<string, TipoActividad> = {
+      crear_prospecto: 'prospecto_creado',
+      crear_cliente: 'cliente_creado',
+      crear_cita: 'cita_creada',
+      definir_proxima_accion: 'proxima_accion_definida',
+      crear_oportunidad: 'oportunidad_creada',
+      crear_servicio: 'servicio_abierto',
+      cambiar_estado: 'etapa_cambiada',
+      registrar_nota: 'nota_registrada',
+      generar_mensaje: 'mensaje_generado',
+    };
+    for (const r of resultados) {
+      if (r.error) continue;
+      const tipoAct = MAPA_ACTIVIDAD[r.tipo];
+      if (!tipoAct) continue;
+      const persona = resolverPersona(r);
+      void registrarActividad({
+        tipo: tipoAct,
+        descripcion: `${r.persona_nombre} · vía LUMO Captura` +
+          (r.explicacion ? ` · ${r.explicacion.slice(0, 140)}` : ''),
+        prospecto_id: persona?.tipo === 'prospecto' ? persona.id : null,
+        cliente_id: persona?.tipo === 'cliente' ? persona.id : null,
+      });
     }
 
     // Historial de acciones de IA (punto 15) — best effort, no bloquea el flujo
@@ -458,6 +489,15 @@ export default function LumoCapture() {
                         <a
                           href={`https://wa.me/${m.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + m.telefono.replace(/[^0-9]/g, '') : m.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(m.mensaje)}`}
                           target="_blank" rel="noopener noreferrer"
+                          onClick={() => {
+                            void registrarActividad({
+                              tipo: 'contacto_whatsapp',
+                              descripcion: `WhatsApp abierto para ${m.nombre}`,
+                              prospecto_id: m.prospectoId || null,
+                              cliente_id: m.clienteId || null,
+                            });
+                            if (m.prospectoId) void sellarPrimerContacto(m.prospectoId, 'whatsapp');
+                          }}
                           className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-xl border border-verde/20 font-semibold"
                         >Enviar por WhatsApp</a>
                       )}

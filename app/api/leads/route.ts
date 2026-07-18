@@ -226,6 +226,23 @@ export async function POST(request: Request) {
     );
   }
 
+  // ── Línea de tiempo: lead recibido (best effort, no bloquea) ──
+  if (insertado && insertado.length > 0) {
+    const { error: errAct } = await supabaseAdmin.from('actividades').insert([{
+      user_id: ownerId,
+      prospecto_id: insertado[0].id,
+      tipo: 'lead_recibido',
+      descripcion: `Lead de landing · interés: ${lead.interes}` +
+        (lead.utm_source ? ` · fuente: ${lead.utm_source}` : ''),
+      metadata: {
+        utm_source: lead.utm_source,
+        utm_medium: lead.utm_medium,
+        utm_campaign: lead.utm_campaign,
+      },
+    }]);
+    if (errAct) console.error('leads: no se pudo registrar actividad', errAct);
+  }
+
   // ── Si ya existía (duplicado), actualizar SOLO campos seguros:
   //    no tocamos estado, notas del asesor ni etapa. ──
   if (!insertado || insertado.length === 0) {
@@ -241,6 +258,21 @@ export async function POST(request: Request) {
     if (errUpdate) {
       console.error('leads: error al actualizar duplicado', errUpdate);
       // El lead ya existe: para la persona la solicitud fue recibida.
+    }
+
+    // Línea de tiempo: nueva solicitud del mismo teléfono (best effort).
+    const { data: existente } = await supabaseAdmin
+      .from('prospectos').select('id')
+      .eq('user_id', ownerId)
+      .eq('telefono_normalizado', lead.telefono)
+      .single();
+    if (existente) {
+      await supabaseAdmin.from('actividades').insert([{
+        user_id: ownerId,
+        prospecto_id: existente.id,
+        tipo: 'lead_recibido',
+        descripcion: `Nueva solicitud web del mismo teléfono · interés: ${lead.interes}`,
+      }]);
     }
   }
 

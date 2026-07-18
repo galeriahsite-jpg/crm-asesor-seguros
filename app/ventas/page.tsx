@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon } from '../components/lumo';
+import { registrarActividad } from '../lib/actividades';
 
 type Cotizacion = {
   id: string;
@@ -90,18 +91,25 @@ export default function Ventas() {
     const personaObj = personas.find(p => p.id === personaSeleccionada.id);
     const nombreCliente = personaObj?.nombre || 'Desconocido';
 
-    const { error } = await supabase.from('oportunidades').insert([{
+    const { data: op, error } = await supabase.from('oportunidades').insert([{
       cliente: nombreCliente,
       producto,
       estado: 'Por diagnosticar',
       prospecto_id: personaSeleccionada.tipo === 'prospecto' ? personaSeleccionada.id : null,
       cliente_id: personaSeleccionada.tipo === 'cliente' ? personaSeleccionada.id : null,
       user_id: user.id
-    }]);
+    }]).select().single();
 
     if (error) {
       alert('Error al guardar: ' + error.message);
     } else {
+      void registrarActividad({
+        tipo: 'oportunidad_creada',
+        descripcion: `${nombreCliente} · ${producto}`,
+        prospecto_id: personaSeleccionada.tipo === 'prospecto' ? personaSeleccionada.id : null,
+        cliente_id: personaSeleccionada.tipo === 'cliente' ? personaSeleccionada.id : null,
+        oportunidad_id: op?.id,
+      });
       setPersonaSeleccionada(null);
       cargarOportunidades();
     }
@@ -138,6 +146,14 @@ export default function Ventas() {
     if (error) {
       alert('Error al agregar cotización: ' + error.message);
     } else {
+      const op = oportunidades.find(o => o.id === oportunidadId);
+      void registrarActividad({
+        tipo: 'cotizacion_agregada',
+        descripcion: `${cotAseguradora}${cotPrima ? ` · ${cotPrima}` : ' · pendiente'}`,
+        prospecto_id: (op as unknown as { prospecto_id?: string })?.prospecto_id || null,
+        cliente_id: (op as unknown as { cliente_id?: string })?.cliente_id || null,
+        oportunidad_id: oportunidadId,
+      });
       setAgregandoCotEn(null);
       setCotPrima('');
       cargarOportunidades();

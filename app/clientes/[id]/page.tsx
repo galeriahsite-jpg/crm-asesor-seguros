@@ -4,6 +4,10 @@ import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { BottomNav, Icon } from '../../components/lumo';
+import {
+  registrarActividad, tiempoTranscurrido,
+  ETIQUETAS_ACTIVIDAD, type Actividad,
+} from '../../lib/actividades';
 
 type Poliza = { id: string; producto: string; aseguradora: string; numero_poliza: string; vencimiento: string; estado: string };
 type Oportunidad = { id: string; producto: string; prima: string; estado: string };
@@ -21,6 +25,7 @@ export default function ExpedienteCliente() {
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([]);
   const [citas, setCitas] = useState<Cita[]>([]);
   const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
 
   const [formActivo, setFormActivo] = useState<string | null>(null);
 
@@ -61,6 +66,13 @@ export default function ExpedienteCliente() {
 
       const { data: serv } = await supabase.from('servicios').select('*').eq('cliente_id', id);
       if (serv) setServicios(serv as Servicio[]);
+
+      const { data: acts } = await supabase.from('actividades')
+        .select('id, tipo, descripcion, metadata, created_at')
+        .eq('cliente_id', id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (acts) setActividades(acts as Actividad[]);
     }
     setCargando(false);
   }
@@ -80,7 +92,14 @@ export default function ExpedienteCliente() {
       user_id: user.id
     }]);
     if (error) alert('Error: ' + error.message);
-    else { setFormActivo(null); setPPoliza(''); setPVencimiento(''); cargarExpediente(clienteId); }
+    else {
+      void registrarActividad({
+        tipo: 'poliza_registrada',
+        descripcion: `${pProducto} · ${pAseguradora} · vence ${pVencimiento}`,
+        cliente_id: clienteId,
+      });
+      setFormActivo(null); setPPoliza(''); setPVencimiento(''); cargarExpediente(clienteId);
+    }
   }
 
   async function guardarCita(e: React.FormEvent) {
@@ -98,7 +117,14 @@ export default function ExpedienteCliente() {
       user_id: user.id
     }]);
     if (error) alert('Error: ' + error.message);
-    else { setFormActivo(null); setCFecha(''); setCHora(''); cargarExpediente(clienteId); }
+    else {
+      void registrarActividad({
+        tipo: 'cita_creada',
+        descripcion: `${cTipo} · ${cFecha} ${cHora}`,
+        cliente_id: clienteId,
+      });
+      setFormActivo(null); setCFecha(''); setCHora(''); cargarExpediente(clienteId);
+    }
   }
 
   async function guardarServicio(e: React.FormEvent) {
@@ -115,7 +141,14 @@ export default function ExpedienteCliente() {
       user_id: user.id
     }]);
     if (error) alert('Error: ' + error.message);
-    else { setFormActivo(null); setSDesc(''); cargarExpediente(clienteId); }
+    else {
+      void registrarActividad({
+        tipo: 'servicio_abierto',
+        descripcion: `${sTipo} · ${sDesc.slice(0, 120)}`,
+        cliente_id: clienteId,
+      });
+      setFormActivo(null); setSDesc(''); cargarExpediente(clienteId);
+    }
   }
 
   if (cargando) return <div className="min-h-screen flex items-center justify-center"><p className="font-hand text-xl text-ink-faint">cargando expediente...</p></div>;
@@ -240,6 +273,26 @@ export default function ExpedienteCliente() {
               </div>
             ))}
             {citas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin citas registradas</p>}
+          </div>
+        </div>
+
+        {/* ── Línea de tiempo universal ── */}
+        <div>
+          <h3 className="lumo-section-title mb-3">Línea de Tiempo</h3>
+          <div className="lumo-card divide-y divide-ink/5">
+            {actividades.map(a => (
+              <div key={a.id} className="p-3 text-sm flex gap-3 items-start">
+                <span className="w-2 h-2 rounded-full bg-azul mt-1.5 shrink-0"></span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-ink font-semibold">{ETIQUETAS_ACTIVIDAD[a.tipo] || a.tipo}</p>
+                  {a.descripcion && <p className="text-ink-soft text-xs mt-0.5 break-words">{a.descripcion}</p>}
+                </div>
+                <span className="text-ink-faint text-xs whitespace-nowrap">{tiempoTranscurrido(a.created_at)}</span>
+              </div>
+            ))}
+            {actividades.length === 0 && (
+              <p className="font-hand text-lg text-ink-faint p-4">aún no hay actividad registrada</p>
+            )}
           </div>
         </div>
 

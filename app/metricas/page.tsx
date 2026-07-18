@@ -12,6 +12,12 @@ export default function Metricas() {
   const [primaTotal, setPrimaTotal] = useState(0);
   const [nombreMes, setNombreMes] = useState('');
 
+  // Velocidad de respuesta (speed-to-lead)
+  const [leadsMes, setLeadsMes] = useState(0);
+  const [leadsSinContacto, setLeadsSinContacto] = useState(0);
+  const [pctEn5Min, setPctEn5Min] = useState<number | null>(null);
+  const [promedioMin, setPromedioMin] = useState<number | null>(null);
+
   useEffect(() => {
     // Obtener el nombre del mes actual en español
     const fecha = new Date();
@@ -70,6 +76,30 @@ export default function Metricas() {
       }, 0);
       setPrimaTotal(total);
     }
+
+    // 5. Velocidad de respuesta: leads de landing del mes
+    const { data: leads } = await supabase
+      .from('prospectos')
+      .select('created_at, primer_contacto_at')
+      .eq('fuente', 'landing')
+      .gte('created_at', primerDiaStr)
+      .lte('created_at', ultimoDiaStr);
+
+    if (leads) {
+      setLeadsMes(leads.length);
+      setLeadsSinContacto(leads.filter(l => !l.primer_contacto_at).length);
+      const contactados = leads.filter(l => l.primer_contacto_at);
+      if (contactados.length > 0) {
+        const minutos = contactados.map(l =>
+          (new Date(l.primer_contacto_at as string).getTime() - new Date(l.created_at).getTime()) / 60000
+        );
+        setPctEn5Min(Math.round((minutos.filter(m => m <= 5).length / contactados.length) * 100));
+        setPromedioMin(Math.round(minutos.reduce((a, b) => a + b, 0) / minutos.length));
+      } else {
+        setPctEn5Min(null);
+        setPromedioMin(null);
+      }
+    }
   }
 
   // Cálculos de Conversión
@@ -125,6 +155,35 @@ export default function Metricas() {
               <div className="bg-rojo h-full rounded-full" style={{ width: `${convCitaPropuesta}%` }}></div>
             </div>
 
+          </div>
+        </div>
+
+        {/* Velocidad de respuesta (speed-to-lead) */}
+        <div>
+          <h2 className="lumo-section-title mb-3">Velocidad de Respuesta (Leads Web)</h2>
+          <div className="lumo-card p-5">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-2xl font-bold text-ink">{leadsMes}</p>
+                <p className="text-[11px] text-ink-soft font-medium mt-1">Leads del mes</p>
+              </div>
+              <div>
+                <p className={`text-2xl font-bold ${pctEn5Min !== null && pctEn5Min >= 50 ? 'text-verde' : 'text-rojo'}`}>
+                  {pctEn5Min !== null ? `${pctEn5Min}%` : '—'}
+                </p>
+                <p className="text-[11px] text-ink-soft font-medium mt-1">Contactados en 5 min</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-ink">{promedioMin !== null ? `${promedioMin} min` : '—'}</p>
+                <p className="text-[11px] text-ink-soft font-medium mt-1">Promedio de respuesta</p>
+              </div>
+            </div>
+            {leadsSinContacto > 0 && (
+              <p className="text-rojo text-xs font-semibold mt-4 bg-rojo-soft rounded-lg p-2 text-center">
+                ⚡ {leadsSinContacto} lead{leadsSinContacto === 1 ? '' : 's'} del mes {leadsSinContacto === 1 ? 'sigue' : 'siguen'} sin primer contacto
+              </p>
+            )}
+            <p className="font-hand text-base text-ink-soft mt-3 text-center">responder en 5 minutos multiplica la conversión</p>
           </div>
         </div>
 

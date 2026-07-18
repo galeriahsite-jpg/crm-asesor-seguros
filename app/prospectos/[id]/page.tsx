@@ -4,6 +4,10 @@ import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { BottomNav, Icon } from '../../components/lumo';
+import {
+  registrarActividad, sellarPrimerContacto, tiempoTranscurrido,
+  ETIQUETAS_ACTIVIDAD, type Actividad,
+} from '../../lib/actividades';
 
 type Cita = { id: string; fecha: string; hora: string; tipo: string; estado: string };
 type Oportunidad = { id: string; producto: string; aseguradora: string; prima: string; estado: string };
@@ -28,6 +32,8 @@ export default function FichaProspecto() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([]);
   const [diagnosticos, setDiagnosticos] = useState<Diagnostico[]>([]);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
+  const [registrandoResultado, setRegistrandoResultado] = useState(false);
 
   const [nuevaAccion, setNuevaAccion] = useState('');
   const [nuevaFecha, setNuevaFecha] = useState('');
@@ -74,7 +80,14 @@ export default function FichaProspecto() {
       });
       const data = await res.json();
       if (!res.ok) setErrorMsg(data.error || 'No se pudo generar el mensaje.');
-      else setMensajeIA(data.mensaje);
+      else {
+        setMensajeIA(data.mensaje);
+        void registrarActividad({
+          tipo: 'mensaje_generado',
+          descripcion: 'Borrador de primer contacto generado con LUMO',
+          prospecto_id: prospectoId,
+        });
+      }
     } catch {
       setErrorMsg('Error de conexión.');
     }
@@ -97,15 +110,79 @@ export default function FichaProspecto() {
       if (ops) setOportunidades(ops as Oportunidad[]);
       const { data: diags } = await supabase.from('diagnosticos').select('*').eq('prospecto_id', id);
       if (diags) setDiagnosticos(diags as Diagnostico[]);
+      const { data: acts } = await supabase.from('actividades')
+        .select('id, tipo, descripcion, metadata, created_at')
+        .eq('prospecto_id', id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (acts) setActividades(acts as Actividad[]);
     }
     setCargando(false);
+  }
+
+  // ── Registro post-llamada de 1 toque (cierra el circuito) ──
+  async function registrarResultado(resultado: string) {
+    if (!prospecto || registrandoResultado) return;
+    setRegistrandoResultado(true);
+
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    const mananaStr = manana.toISOString().split('T')[0];
+    const en3Dias = new Date();
+    en3Dias.setDate(en3Dias.getDate() + 3);
+    const en3DiasStr = en3Dias.toISOString().split('T')[0];
+
+    // Cada resultado aplica etapa + próxima acción sin más capturas.
+    const EFECTOS: Record<string, { estado?: string; accion?: string; fecha?: string }> = {
+      'Respondió · interesado':   { estado: 'Contactado', accion: 'Dar seguimiento a la conversación', fecha: mananaStr },
+      'Quiere cotización':        { estado: 'Calificado', accion: 'Preparar y enviar cotización', fecha: mananaStr },
+      'No respondió':             { accion: 'Reintentar llamada', fecha: mananaStr },
+      'Pidió tiempo':             { estado: 'Contactado', accion: 'Retomar contacto', fecha: en3DiasStr },
+      'No interesado':            { estado: 'Perdido' },
+    };
+    const efecto = EFECTOS[resultado] || {};
+
+    const cambios: Record<string, string> = {};
+    if (efecto.estado) cambios.estado = efecto.estado;
+    if (efecto.accion) { cambios.proxima_accion = efecto.accion; cambios.fecha_proxima = efecto.fecha!; }
+    if (Object.keys(cambios).length) {
+      await supabase.from('prospectos').update(cambios).eq('id', prospectoId);
+    }
+
+    await registrarActividad({
+      tipo: 'resultado_contacto',
+      descripcion: `${resultado}` +
+        (efecto.estado ? ` · etapa → ${efecto.estado}` : '') +
+        (efecto.accion ? ` · siguiente: ${efecto.accion} (${efecto.fecha})` : ''),
+      prospecto_id: prospectoId,
+    });
+    await sellarPrimerContacto(prospectoId, 'llamada');
+
+    setRegistrandoResultado(false);
+    cargarFicha(prospectoId);
+  }
+
+  function abrirWhatsAppFicha() {
+    void registrarActividad({
+      tipo: 'contacto_whatsapp',
+      descripcion: `WhatsApp abierto para ${prospecto?.nombre}`,
+      prospecto_id: prospectoId,
+    });
+    void sellarPrimerContacto(prospectoId, 'whatsapp');
   }
 
   async function guardarProximaAccion(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from('prospectos').update({ proxima_accion: nuevaAccion, fecha_proxima: nuevaFecha }).eq('id', prospectoId);
     if (error) alert('Error al guardar la acción');
-    else { setNuevaAccion(''); setNuevaFecha(''); cargarFicha(prospectoId); }
+    else {
+      void registrarActividad({
+        tipo: 'proxima_accion_definida',
+        descripcion: `${nuevaAccion} · ${nuevaFecha}`,
+        prospecto_id: prospectoId,
+      });
+      setNuevaAccion(''); setNuevaFecha(''); cargarFicha(prospectoId);
+    }
   }
 
   async function guardarCita(e: React.FormEvent) {
@@ -117,7 +194,14 @@ export default function FichaProspecto() {
       titulo: prospecto.nombre, fecha: citaFecha, hora: citaHora, tipo: citaTipo, estado: 'Pendiente', prospecto_id: prospectoId, user_id: user.id
     }]);
     if (error) alert('Error al agendar');
-    else { setMostrarFormCita(false); setCitaFecha(''); setCitaHora(''); setCitaTipo('Llamada'); cargarFicha(prospectoId); }
+    else {
+      void registrarActividad({
+        tipo: 'cita_creada',
+        descripcion: `${citaTipo} · ${citaFecha} ${citaHora}`,
+        prospecto_id: prospectoId,
+      });
+      setMostrarFormCita(false); setCitaFecha(''); setCitaHora(''); setCitaTipo('Llamada'); cargarFicha(prospectoId);
+    }
   }
 
   async function guardarDiagnostico(e: React.FormEvent) {
@@ -142,6 +226,11 @@ export default function FichaProspecto() {
       alert('Error al guardar diagnóstico: ' + error.message);
     } else {
       await supabase.from('prospectos').update({ proxima_accion: dProximaAccion, fecha_proxima: dFechaDecision }).eq('id', prospectoId);
+      void registrarActividad({
+        tipo: 'diagnostico_creado',
+        descripcion: `Proteger: ${dProteger} · Producto: ${dProductoPosible} · Decisión: ${dFechaDecision}`,
+        prospecto_id: prospectoId,
+      });
       setMostrarFormDiag(false);
       setDProteger(''); setDRiesgo(''); setDProductoPosible(''); setDAseguradoras(''); setDFechaDecision(''); setDProximaAccion('');
       cargarFicha(prospectoId);
@@ -153,11 +242,29 @@ export default function FichaProspecto() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('oportunidades').insert([{
-      cliente: prospecto.nombre, producto: oppProducto, aseguradora: oppAseguradora, prima: oppPrima, estado: 'Cotizando', prospecto_id: prospectoId, user_id: user.id
+    // Modelo nuevo: UNA oportunidad; la aseguradora/prima van como
+    // cotización anidada.
+    const { data: op, error } = await supabase.from('oportunidades').insert([{
+      cliente: prospecto.nombre, producto: oppProducto, estado: 'Cotizando', prospecto_id: prospectoId, user_id: user.id
+    }]).select().single();
+    if (error) { alert('Error al guardar cotización'); return; }
+
+    const { error: errCot } = await supabase.from('cotizaciones').insert([{
+      oportunidad_id: op.id,
+      aseguradora: oppAseguradora,
+      prima: oppPrima || null,
+      estado: oppPrima ? 'Cotizada' : 'Pendiente',
+      user_id: user.id,
     }]);
-    if (error) alert('Error al guardar cotización');
-    else { setMostrarFormOpp(false); setOppPrima(''); cargarFicha(prospectoId); }
+    if (errCot) alert('Oportunidad creada, pero falló la cotización: ' + errCot.message);
+
+    void registrarActividad({
+      tipo: 'oportunidad_creada',
+      descripcion: `${oppProducto} · ${oppAseguradora}${oppPrima ? ` · ${oppPrima}` : ''}`,
+      prospecto_id: prospectoId,
+      oportunidad_id: op.id,
+    });
+    setMostrarFormOpp(false); setOppPrima(''); cargarFicha(prospectoId);
   }
 
   async function convertirACliente() {
@@ -184,6 +291,19 @@ export default function FichaProspecto() {
 
   if (cargando) return <div className="min-h-screen flex items-center justify-center"><p className="font-hand text-xl text-ink-faint">cargando ficha...</p></div>;
 
+  // ── Briefing automático (reglas explicables, sin costo de IA) ──
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const ultimaActividad = actividades[0];
+  const citaProxima = citas
+    .filter(c => c.estado === 'Pendiente' && c.fecha >= hoyStr)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+  const objetivoSugerido =
+    prospecto?.estado === 'Convertido' ? 'Cuidar la relación postventa'
+    : !prospecto?.primer_contacto_at && prospecto?.fuente === 'landing' ? 'Hacer el PRIMER contacto (el lead sigue caliente)'
+    : diagnosticos.length === 0 ? 'Agendar el diagnóstico de necesidades'
+    : oportunidades.length === 0 ? 'Registrar y presentar la cotización'
+    : 'Dar seguimiento a la cotización y cerrar';
+
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
@@ -195,6 +315,49 @@ export default function FichaProspecto() {
       </header>
 
       <main className="p-5 space-y-8">
+
+        {/* ── Briefing: el contexto en 20 segundos, antes de llamar ── */}
+        <div className="lumo-card relative p-4 border-l-4 border-l-azul">
+          <p className="text-xs text-azul uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+            <Icon name="hoy" size={14} /> Antes de contactar
+          </p>
+          <div className="text-sm text-ink space-y-1">
+            <p><span className="text-ink-faint">Interés:</span> <b>{prospecto?.producto || 'sin definir'}</b> · etapa <b>{prospecto?.estado}</b></p>
+            {ultimaActividad && (
+              <p><span className="text-ink-faint">Último movimiento:</span> {ETIQUETAS_ACTIVIDAD[ultimaActividad.tipo] || ultimaActividad.tipo} · {tiempoTranscurrido(ultimaActividad.created_at)}</p>
+            )}
+            {prospecto?.proxima_accion && (
+              <p><span className="text-ink-faint">Promesa pendiente:</span> {prospecto.proxima_accion} ({prospecto.fecha_proxima || 'sin fecha'})</p>
+            )}
+            {citaProxima && (
+              <p><span className="text-ink-faint">Próxima cita:</span> {citaProxima.tipo} el {citaProxima.fecha} a las {citaProxima.hora}</p>
+            )}
+            {prospecto?.nota_entrada_web && (
+              <p><span className="text-ink-faint">Pidió en la web:</span> {prospecto.nota_entrada_web.slice(0, 120)}</p>
+            )}
+          </div>
+          <p className="font-hand text-base text-azul mt-2">objetivo: {objetivoSugerido}</p>
+        </div>
+
+        {/* ── Registro post-llamada de 1 toque ── */}
+        <div className="lumo-card p-4">
+          <p className="text-xs text-ink-soft uppercase tracking-wider font-bold mb-2">¿Cómo terminó el contacto?</p>
+          <div className="flex flex-wrap gap-2">
+            {['Respondió · interesado', 'Quiere cotización', 'No respondió', 'Pidió tiempo', 'No interesado'].map(r => (
+              <button
+                key={r}
+                disabled={registrandoResultado}
+                onClick={() => registrarResultado(r)}
+                className={`text-xs px-3 py-2 rounded-xl border font-semibold transition-colors disabled:opacity-40 ${
+                  r === 'No interesado'
+                    ? 'bg-rojo-soft text-rojo border-rojo/20 hover:bg-rojo hover:text-white'
+                    : 'bg-azul-soft text-azul border-azul/20 hover:bg-azul hover:text-white'
+                }`}
+              >{r}</button>
+            ))}
+          </div>
+          <p className="font-hand text-sm text-ink-faint mt-2">un toque: registra el resultado, ajusta la etapa y agenda lo que sigue.</p>
+        </div>
 
         <div className="lumo-card relative p-5">
           <span className="lumo-tape"></span>
@@ -213,7 +376,7 @@ export default function FichaProspecto() {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             {prospecto?.telefono && (
-             <a href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-center text-sm bg-green-600/20 text-green-400 border border-green-800 font-medium py-2 rounded-lg hover:bg-green-600/40">WhatsApp</a>
+             <a href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={abrirWhatsAppFicha} className="text-center text-sm bg-green-600/20 text-green-400 border border-green-800 font-medium py-2 rounded-lg hover:bg-green-600/40">WhatsApp</a>
             )}
             <button onClick={() => { setMostrarFormCita(!mostrarFormCita); setMostrarFormDiag(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-azul-soft text-azul border border-azul/20 font-semibold py-2 rounded-lg hover:bg-azul hover:text-white transition-colors">Agendar Cita</button>
             <button onClick={() => { setMostrarFormDiag(!mostrarFormDiag); setMostrarFormCita(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-paper text-ink border border-ink/15 font-semibold py-2 rounded-lg hover:bg-ink hover:text-white transition-colors">Diagnóstico</button>
@@ -240,6 +403,7 @@ export default function FichaProspecto() {
                   <a
                     href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(mensajeIA)}`}
                     target="_blank" rel="noopener noreferrer"
+                    onClick={abrirWhatsAppFicha}
                     className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-xl border border-verde/20 font-semibold"
                   >Enviar por WhatsApp</a>
                 )}
@@ -364,6 +528,26 @@ export default function FichaProspecto() {
               </div>
             ))}
             {oportunidades.length === 0 && <p className="font-hand text-lg text-ink-faint">aún no hay cotizaciones para este prospecto</p>}
+          </div>
+        </div>
+
+        {/* ── Línea de tiempo universal ── */}
+        <div>
+          <h3 className="lumo-section-title mb-3">Línea de Tiempo</h3>
+          <div className="lumo-card divide-y divide-ink/5">
+            {actividades.map(a => (
+              <div key={a.id} className="p-3 text-sm flex gap-3 items-start">
+                <span className="w-2 h-2 rounded-full bg-azul mt-1.5 shrink-0"></span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-ink font-semibold">{ETIQUETAS_ACTIVIDAD[a.tipo] || a.tipo}</p>
+                  {a.descripcion && <p className="text-ink-soft text-xs mt-0.5 break-words">{a.descripcion}</p>}
+                </div>
+                <span className="text-ink-faint text-xs whitespace-nowrap">{tiempoTranscurrido(a.created_at)}</span>
+              </div>
+            ))}
+            {actividades.length === 0 && (
+              <p className="font-hand text-lg text-ink-faint p-4">aún no hay actividad registrada (corre la migración operativa)</p>
+            )}
           </div>
         </div>
 

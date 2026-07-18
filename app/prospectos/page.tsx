@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, PageHeader } from '../components/lumo';
 import LumoDictado from '../components/LumoDictado';
+import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
 
 type Prospecto = {
   id: string;
@@ -86,6 +87,11 @@ export default function Prospectos() {
     if (error) {
       alert('Error al actualizar');
     } else {
+      void registrarActividad({
+        tipo: 'etapa_cambiada',
+        descripcion: `Etapa → ${nuevoEstado}`,
+        prospecto_id: id,
+      });
       cargarProspectos();
     }
   }
@@ -129,11 +135,18 @@ export default function Prospectos() {
     }
   }
 
-   function abrirWhatsApp(tel: string) {
-    let limpio = tel.replace(/[^0-9]/g, '');
+   function abrirWhatsApp(p: Prospecto) {
+    let limpio = p.telefono.replace(/[^0-9]/g, '');
     if (limpio.length === 10) {
       limpio = '52' + limpio; // Agrega el 52 si es un número mexicano de 10 dígitos
     }
+    // Línea de tiempo + sellado de primer contacto (speed-to-lead)
+    void registrarActividad({
+      tipo: 'contacto_whatsapp',
+      descripcion: `WhatsApp abierto para ${p.nombre}`,
+      prospecto_id: p.id,
+    });
+    void sellarPrimerContacto(p.id, 'whatsapp');
     window.open(`https://wa.me/${limpio}`, '_blank');
   }
 
@@ -249,7 +262,7 @@ export default function Prospectos() {
                           <Icon name="phone" size={14} /> {p.telefono || 'Sin teléfono'}
                         </span>
                         {p.telefono && (
-                          <button onClick={() => abrirWhatsApp(p.telefono)} className="text-verde hover:text-verde text-xs bg-verde-soft px-2 py-1 rounded-md border border-verde/20 transition-colors font-semibold">WhatsApp</button>
+                          <button onClick={() => abrirWhatsApp(p)} className="text-verde hover:text-verde text-xs bg-verde-soft px-2 py-1 rounded-md border border-verde/20 transition-colors font-semibold">WhatsApp</button>
                         )}
                       </div>
                       <p className="text-sm text-ink-soft mt-1">Interesado en: <span className="font-semibold text-ink">{p.producto || 'No especificado'}</span></p>

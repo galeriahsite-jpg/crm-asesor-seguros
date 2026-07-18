@@ -54,6 +54,9 @@ create table if not exists public.prospectos (
   nota_entrada_web text,
   -- n8n (n8n_migracion.sql)
   n8n_procesado timestamptz,
+  -- Velocidad de respuesta (operativa_migracion.sql)
+  primer_contacto_at timestamptz,
+  primer_contacto_canal text,
   created_at timestamptz not null default now()
 );
 
@@ -178,6 +181,18 @@ create table if not exists public.aseguradoras (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.actividades (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  prospecto_id uuid references public.prospectos(id) on delete cascade,
+  cliente_id uuid references public.clientes(id) on delete cascade,
+  oportunidad_id uuid references public.oportunidades(id) on delete set null,
+  tipo text not null,
+  descripcion text,
+  metadata jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.acciones_ia (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -226,6 +241,12 @@ create index if not exists cotizaciones_oportunidad_idx on public.cotizaciones (
 create index if not exists cotizaciones_user_fecha_idx on public.cotizaciones (user_id, created_at desc);
 create index if not exists polizas_cliente_idx on public.polizas (cliente_id);
 create index if not exists acciones_ia_user_fecha on public.acciones_ia (user_id, created_at desc);
+create index if not exists actividades_prospecto_idx on public.actividades (prospecto_id, created_at desc);
+create index if not exists actividades_cliente_idx on public.actividades (cliente_id, created_at desc);
+create index if not exists actividades_user_fecha_idx on public.actividades (user_id, created_at desc);
+create index if not exists idx_prospectos_sin_contacto
+  on public.prospectos (created_at)
+  where primer_contacto_at is null and estado = 'Nuevo';
 create index if not exists ai_usage_user_fecha_idx on public.ai_usage (user_id, created_at desc);
 
 -- ------------------------------------------------------------
@@ -266,6 +287,16 @@ begin
   end loop;
 end;
 $$;
+
+-- actividades: lectura e inserción propias; sin update/delete
+-- (la línea de tiempo es histórica e inmutable desde la app).
+alter table public.actividades enable row level security;
+drop policy if exists "actividades_select_propias" on public.actividades;
+create policy "actividades_select_propias" on public.actividades
+  for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "actividades_insert_propias" on public.actividades;
+create policy "actividades_insert_propias" on public.actividades
+  for insert to authenticated with check ((select auth.uid()) = user_id);
 
 -- acciones_ia: solo lectura e inserción propias (sin update/delete).
 alter table public.acciones_ia enable row level security;
@@ -323,7 +354,27 @@ $$;
 
 revoke all on function public.incrementar_rate_limit(text, integer) from public, anon, authenticated;
 
--- Conversión transaccional prospecto → cliente (ver blindaje_migracion.sql).
+-- Sellado atómico del primer contacto (speed-to-lead).
+create or replace function public.sellar_primer_contacto(
+  p_prospecto_id uuid,
+  p_canal text
+)
+returns void
+language sql
+security invoker
+set search_path = public
+as $$
+  update prospectos
+  set primer_contacto_at = now(),
+      primer_contacto_canal = p_canal
+  where id = p_prospecto_id
+    and primer_contacto_at is null;
+$$;
+
+revoke all on function public.sellar_primer_contacto(uuid, text) from public, anon;
+grant execute on function public.sellar_primer_contacto(uuid, text) to authenticated;
+
+-- Conversión transaccional prospecto → cliente (ver operativa_migracion.sql, v2).
 create or replace function public.convertir_prospecto_a_cliente(
   p_prospecto_id uuid
 )
@@ -368,6 +419,13 @@ begin
     proxima_accion = 'Llamar para revisión postventa y pedir referidos',
     fecha_proxima  = v_fecha_postventa
   where id = p_prospecto_id;
+
+  insert into actividades (user_id, prospecto_id, cliente_id, tipo, descripcion)
+  values (
+    v_prospecto.user_id, p_prospecto_id, v_cliente_id,
+    'convertido',
+    'Prospecto convertido en cliente. Postventa agendada para ' || v_fecha_postventa
+  );
 
   return v_cliente_id;
 end;
