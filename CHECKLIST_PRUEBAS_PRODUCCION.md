@@ -22,6 +22,7 @@ Marca cada una. Si alguna falla, detente y repórtala (no continúes).
 - [ ] **P. Renovación:** en "Hoy" aparece la decisión de renovación → "Agendar llamada" crea cita mañana.
 - [ ] **Q. Servicio:** expediente → + Servicio → aparece en el módulo y en la línea de tiempo.
 - [ ] **R. Aislamiento entre usuarios:** crea un segundo usuario en Supabase Auth → loguéate con él → NO ve prospectos/clientes/actividades del primero.
+- [ ] **R2. Integridad de relaciones en actividades:** con el segundo usuario, intenta insertar (vía SQL Editor con su JWT o desde la app) una actividad con un `prospecto_id` del primer usuario → debe RECHAZARSE por la política reforzada (violates row-level security).
 - [ ] **T. Rate limits:** repite el envío de la landing 6 veces desde la misma red → la 6ª responde "Recibimos varias solicitudes…".
 - [ ] **U. Audio inválido:** en `/prospectos`, dictado con archivo grande/raro → mensaje de error claro, sin 500.
 - [ ] **n8n:** con el flujo activo, lead nuevo → 1 oportunidad "Por diagnosticar" + cotizaciones + WhatsApp; apaga WhatsApp (apikey mala), fuerza un lead, reactívala → al reintentar NO se duplica la oportunidad.

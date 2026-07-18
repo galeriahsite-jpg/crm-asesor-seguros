@@ -17,11 +17,21 @@ SQL Editor → pega `SQL_DIAGNOSTICO_PRODUCCION.sql` → Run.
 - Query 2 (duplicados): si devuelve filas, mándamelas ANTES de seguir.
 - Lo demás es informativo (qué existe y qué falta).
 
-## Paso 2 · Variables en Vercel (causa de los deploys en Error)
+## Paso 2 · Variables en Vercel (causa de los deploys en **Error**)
 Vercel → Settings → Environment Variables → agrega (Production y Preview):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 Verifica que ya existan: `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `LUMO_LEAD_OWNER_ID`. (Opcionales: `LUMO_MODEL`, `OPENAI_MODEL`.) Los valores están en tu `.env.local`.
+
+### Paso 2b · Deployments en **Blocked** (causa NO confirmada — investígala)
+Lo anterior explica los deployments en **Error** (reproducido localmente), pero
+**"Blocked" es otro estado** y puede deberse a: deployment protection, checks de
+la integración de Git, límites/spend de la cuenta, política de producción, o un
+deployment cancelado por otro más reciente. Antes de asumir nada:
+1. Vercel → Deployments → abre uno en estado Blocked.
+2. Lee y ANOTA el mensaje exacto que muestra.
+3. Si el mensaje no es obvio, pégamelo y lo diagnosticamos.
+No des por hecho que agregar las variables resuelve también los Blocked.
 
 ## Paso 3 · Migración correctiva (Supabase)
 SQL Editor → pega `supabase/reparacion_integral_20260718.sql` → Run.
@@ -30,12 +40,16 @@ SQL Editor → pega `supabase/reparacion_integral_20260718.sql` → Run.
 - Al final ejecuta el diagnóstico de nuevo y confirma: índice `prospectos_user_tel_norm_uniq` presente, 3 funciones, tablas `actividades`/`cotizaciones`/`ai_usage`.
 
 ## Paso 4 · Merge y deploy
+La rama principal de este repositorio es **`main`** (verificado con
+`git branch -a`: existe `main` y `remotes/origin/main`; no existe `master`).
 ```bash
-git checkout master
+git branch --show-current   # debe decir: fix/reparacion-integral-lumo
+git checkout main
+git pull origin main
 git merge fix/reparacion-integral-lumo
-git push
+git push origin main
 ```
-Vercel construirá; ahora con las variables el build debe pasar.
+Vercel construirá desde `main`; con las variables del Paso 2 el build debe pasar.
 
 ## Paso 5 · n8n
 Importa de nuevo `n8n/flujo-leads-automatico.json` (borra/desactiva el viejo), rellena el nodo Config y actívalo.

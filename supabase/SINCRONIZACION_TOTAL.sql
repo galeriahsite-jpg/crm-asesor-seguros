@@ -1,4 +1,10 @@
 -- ============================================================
+-- ⚠️ NOTA: para reparar producción usa PRIMERO
+--    reparacion_integral_20260718.sql (es el script autoritativo:
+--    incluye el fix del índice con verificación de duplicados y
+--    la política reforzada de actividades). Este archivo queda
+--    como inventario de referencia del esquema completo.
+-- ============================================================
 -- LUMO · SINCRONIZACIÓN TOTAL (End-to-End)
 -- Correr en: Supabase Dashboard → SQL Editor → New query → Run
 --

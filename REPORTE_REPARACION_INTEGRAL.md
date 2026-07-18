@@ -1,6 +1,21 @@
 # REPORTE DE REPARACIÓN INTEGRAL · LUMO
-**Rama:** `fix/reparacion-integral-lumo` · **Fecha:** 2026-07-18
+**Rama:** `fix/reparacion-integral-lumo` · **Fecha:** 2026-07-18 · **v2 (segunda revisión aplicada)**
 **Sin push, sin merge, sin deploy.** Cero funcionalidades eliminadas.
+
+## 0. Segunda revisión — 10 correcciones aplicadas
+
+| # | Observación del revisor | Resolución |
+|---|---|---|
+| 1 | Guía usaba `master` | ✅ Verificado con `git branch -a`: la principal es **`main`** (no existe master). Guía corregida con `git pull origin main` incluido |
+| 2 | `IF NOT EXISTS` no garantiza la DEFINICIÓN del índice | ✅ La migración ahora hace recreación controlada (DROP ambos índices + CREATE sin if-not-exists) SOLO tras confirmar cero duplicados. Idempotencia por definición |
+| 3 | Diagnóstico no verificaba columnas de relación de la RPC | ✅ Query 6c: user_id/prospecto_id/cliente_id en citas, oportunidades, diagnosticos, tramites y servicios (esperado: 15 filas) |
+| 4 | `CREATE TABLE IF NOT EXISTS` no repara tablas incompletas | ✅ Sección B.1b: ALTER ADD COLUMN IF NOT EXISTS para TODAS las columnas de actividades, cotizaciones, ai_usage y web_rate_limits; B.1c para las relaciones de las 5 tablas de la conversión |
+| 5 | FK de actividades con ON DELETE CASCADE contradice bitácora inmutable | ✅ Documentado como decisión de producto PENDIENTE en la migración (se conserva CASCADE por compatibilidad; alternativas SET NULL o archivado lógico; cambiarla requiere migración propia con rollback). NO se cambió |
+| 6 | Política INSERT de actividades no validaba propiedad de las relaciones | ✅ WITH CHECK reforzado: prospecto_id, cliente_id Y oportunidad_id deben pertenecer al mismo auth.uid(). Aplicado en migración y esquema_base. Nueva prueba R2 en checklist |
+| 7 | "Blocked" de Vercel atribuido sin confirmar | ✅ Guía ahora separa Error (causa confirmada: variables) de Blocked (causa NO confirmada) con paso 2b: abrir el deployment, leer y anotar el mensaje exacto |
+| 8 | Diagnóstico incompleto | ✅ Añadidos: indexdef (6b), FKs con delete_rule (6d), definición real de políticas qual/with_check (6e), definición ACTIVA de las 3 RPCs con pg_get_functiondef (6f), columnas NOT NULL sin default (6g) |
+| 9 | Idempotencia por nombre vs por definición | ✅ Índice: recreación controlada. Funciones: create or replace (definición garantizada). Políticas: drop+create (definición garantizada). Columnas: ADD IF NOT EXISTS (aditivo). Documentado |
+| 10 | Re-verificación | ✅ tsc 0 · build OK 25 rutas · lint sin errores nuevos (13 legado) · JSON n8n válido (resultados abajo, re-ejecutados tras estos cambios) |
 
 ---
 

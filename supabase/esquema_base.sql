@@ -311,7 +311,19 @@ create policy "actividades_select_propias" on public.actividades
   for select to authenticated using ((select auth.uid()) = user_id);
 drop policy if exists "actividades_insert_propias" on public.actividades;
 create policy "actividades_insert_propias" on public.actividades
-  for insert to authenticated with check ((select auth.uid()) = user_id);
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and (prospecto_id is null or exists (
+      select 1 from public.prospectos p
+      where p.id = prospecto_id and p.user_id = (select auth.uid())))
+    and (cliente_id is null or exists (
+      select 1 from public.clientes c
+      where c.id = cliente_id and c.user_id = (select auth.uid())))
+    and (oportunidad_id is null or exists (
+      select 1 from public.oportunidades o
+      where o.id = oportunidad_id and o.user_id = (select auth.uid())))
+  );
 
 -- acciones_ia: solo lectura e inserción propias (sin update/delete).
 alter table public.acciones_ia enable row level security;

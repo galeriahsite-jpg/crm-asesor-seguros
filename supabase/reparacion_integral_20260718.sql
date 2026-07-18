@@ -49,15 +49,18 @@ begin
       'Ejecuta el query de duplicados de SQL_DIAGNOSTICO_PRODUCCION.sql, fusiona manualmente y vuelve a correr esta migración.',
       v_duplicados;
   else
-    -- Índice único NORMAL: PostgREST SÍ puede inferirlo en ON CONFLICT.
-    create unique index if not exists prospectos_user_tel_norm_uniq
-      on public.prospectos (user_id, telefono_normalizado);
-
-    -- El índice parcial viejo queda redundante: se retira.
-    -- (No es destructivo: no toca datos y el nuevo índice lo cubre.)
+    -- Recreación CONTROLADA: idempotencia por DEFINICIÓN, no por nombre.
+    -- (create if not exists dejaría intacto un índice homónimo con
+    --  definición incorrecta; aquí se garantiza la definición final.)
+    drop index if exists public.prospectos_user_tel_norm_uniq;
     drop index if exists public.prospectos_user_telefono_unique_idx;
 
-    raise notice 'REPARACION 42P10 APLICADA: índice único normal activo.';
+    -- Índice único NORMAL, sin predicado WHERE:
+    -- PostgREST SÍ puede inferirlo en ON CONFLICT.
+    create unique index prospectos_user_tel_norm_uniq
+      on public.prospectos (user_id, telefono_normalizado);
+
+    raise notice 'REPARACION 42P10 APLICADA: índice único normal activo (definición garantizada).';
   end if;
 end;
 $$;
@@ -107,6 +110,62 @@ create table if not exists public.web_rate_limits (
   contador integer not null default 1,
   ventana_inicio timestamptz not null default now()
 );
+
+-- ------------------------------------------------------------
+-- B.1b · CREATE TABLE IF NOT EXISTS no repara tablas existentes
+--        incompletas: se garantizan TODAS las columnas
+--        indispensables de las tablas nuevas con ALTER.
+-- ------------------------------------------------------------
+
+alter table public.actividades
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid,
+  add column if not exists oportunidad_id uuid,
+  add column if not exists tipo text,
+  add column if not exists descripcion text,
+  add column if not exists metadata jsonb;
+
+alter table public.cotizaciones
+  add column if not exists oportunidad_id uuid,
+  add column if not exists aseguradora text,
+  add column if not exists prima text,
+  add column if not exists estado text default 'Pendiente',
+  add column if not exists nota text,
+  add column if not exists url_cotizador text;
+
+alter table public.ai_usage
+  add column if not exists route text,
+  add column if not exists model text,
+  add column if not exists input_tokens integer,
+  add column if not exists output_tokens integer,
+  add column if not exists duration_ms integer,
+  add column if not exists success boolean default true;
+
+alter table public.web_rate_limits
+  add column if not exists contador integer default 1,
+  add column if not exists ventana_inicio timestamptz default now();
+
+-- ------------------------------------------------------------
+-- B.1c · Columnas de relación que la RPC de conversión necesita
+--        en TODAS las tablas que migra (si una migración vieja
+--        quedó a medias, esto lo repara).
+-- ------------------------------------------------------------
+
+alter table public.citas
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid;
+alter table public.oportunidades
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid;
+alter table public.diagnosticos
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid;
+alter table public.tramites
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid;
+alter table public.servicios
+  add column if not exists prospecto_id uuid,
+  add column if not exists cliente_id uuid;
 
 -- ------------------------------------------------------------
 -- B.2 · Columnas usadas por el código (todas idempotentes).
@@ -286,10 +345,48 @@ alter table public.actividades enable row level security;
 drop policy if exists "actividades_select_propias" on public.actividades;
 create policy "actividades_select_propias" on public.actividades
   for select to authenticated using ((select auth.uid()) = user_id);
+
+-- INSERT reforzado (integridad multiusuario): además de user_id,
+-- las relaciones referidas deben pertenecer al MISMO asesor. Un
+-- usuario autenticado no puede colgar actividades de registros
+-- ajenos aunque conozca sus UUID.
 drop policy if exists "actividades_insert_propias" on public.actividades;
 create policy "actividades_insert_propias" on public.actividades
-  for insert to authenticated with check ((select auth.uid()) = user_id);
+  for insert to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and (
+      prospecto_id is null
+      or exists (
+        select 1 from public.prospectos p
+        where p.id = prospecto_id and p.user_id = (select auth.uid())
+      )
+    )
+    and (
+      cliente_id is null
+      or exists (
+        select 1 from public.clientes c
+        where c.id = cliente_id and c.user_id = (select auth.uid())
+      )
+    )
+    and (
+      oportunidad_id is null
+      or exists (
+        select 1 from public.oportunidades o
+        where o.id = oportunidad_id and o.user_id = (select auth.uid())
+      )
+    )
+  );
 -- Sin update/delete: la línea de tiempo es inmutable desde la app.
+--
+-- NOTA DE PRODUCTO (decisión pendiente, NO se cambia aquí):
+-- las FK de actividades usan ON DELETE CASCADE — si se elimina un
+-- prospecto/cliente, su historial se va con él. Eso contradice una
+-- bitácora 100% inmutable. Alternativas: ON DELETE SET NULL (conserva
+-- la actividad sin la relación) o archivado lógico (no borrar
+-- físicamente personas con historial). Cambiar la FK requiere su
+-- propia migración con plan y rollback; se mantiene CASCADE por
+-- compatibilidad hasta que lo decidas.
 
 alter table public.cotizaciones enable row level security;
 drop policy if exists "cotizaciones_select_propias" on public.cotizaciones;
