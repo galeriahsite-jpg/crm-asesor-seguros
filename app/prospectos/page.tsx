@@ -6,6 +6,7 @@ import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 import LumoDictado from '../components/LumoDictado';
 import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
 import { validarTelefonoOpcional } from '../lib/telefono';
+import TelefonoInput from '../components/TelefonoInput';
 
 type Prospecto = {
   id: string;
@@ -224,13 +225,7 @@ export default function Prospectos() {
               required
               className="lumo-input"
             />
-            <input
-              type="tel"
-              placeholder="Teléfono"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="lumo-input"
-            />
+            <TelefonoInput value={telefono} onChange={setTelefono} placeholder="Teléfono (10 dígitos, opcional)" />
             <select
               value={producto}
               onChange={(e) => setProducto(e.target.value)}
@@ -290,7 +285,7 @@ export default function Prospectos() {
                 /* Modo Edición */
                 <form onSubmit={(e) => guardarEdicion(e, p.id)} className="space-y-3">
                   <input type="text" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="lumo-input p-2" />
-                  <input type="tel" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} className="lumo-input p-2" />
+                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} className="lumo-input p-2" />
                   <select value={editProducto} onChange={(e) => setEditProducto(e.target.value)} className="lumo-input p-2">
                     <option value="">Sin producto</option>
                     <option value="Vida">Vida</option>

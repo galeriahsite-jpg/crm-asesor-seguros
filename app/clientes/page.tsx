@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
 import { validarTelefonoOpcional } from '../lib/telefono';
+import TelefonoInput from '../components/TelefonoInput';
 
 type Poliza = {
   id: string;
@@ -176,13 +177,7 @@ export default function Clientes() {
               required
               className="lumo-input"
             />
-            <input
-              type="tel"
-              placeholder="Teléfono"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="lumo-input"
-            />
+            <TelefonoInput value={telefono} onChange={setTelefono} placeholder="Teléfono (10 dígitos, opcional)" />
           </div>
           <button type="submit" className="w-full lumo-btn-primary py-3">
             Crear Cliente
@@ -209,7 +204,7 @@ export default function Clientes() {
               {editandoId === c.id ? (
                 <form onSubmit={(e) => guardarEdicion(e, c.id)} className="space-y-3">
                   <input type="text" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="lumo-input p-2" />
-                  <input type="tel" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} className="lumo-input p-2" />
+                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} className="lumo-input p-2" />
                   <div className="flex gap-2">
                     <button type="submit" className="flex-1 lumo-btn-primary py-2 text-sm">Guardar Cambios</button>
                     <button type="button" onClick={() => setEditandoId(null)} className="flex-1 lumo-btn-ghost py-2 text-sm">Cancelar</button>

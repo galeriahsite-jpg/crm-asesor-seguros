@@ -12,6 +12,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Icon } from '../components/lumo';
+import TelefonoInput from '../components/TelefonoInput';
 
 const INTERESES = ['Vida', 'Gastos Médicos', 'Auto', 'Hogar', 'Retiro'];
 
@@ -94,14 +95,7 @@ function FormularioSolicitud() {
 
       <div>
         <label className="block text-sm font-semibold text-ink-soft mb-1">Tu WhatsApp</label>
-        <input
-          type="tel"
-          value={telefono}
-          onChange={e => setTelefono(e.target.value)}
-          required
-          placeholder="10 dígitos"
-          className="lumo-input"
-        />
+        <TelefonoInput value={telefono} onChange={setTelefono} required />
       </div>
 
       <div>
