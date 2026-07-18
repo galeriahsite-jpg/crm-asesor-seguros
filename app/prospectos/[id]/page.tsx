@@ -34,6 +34,7 @@ export default function FichaProspecto() {
   const [diagnosticos, setDiagnosticos] = useState<Diagnostico[]>([]);
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [registrandoResultado, setRegistrandoResultado] = useState(false);
+  const [convirtiendo, setConvirtiendo] = useState(false);
 
   const [nuevaAccion, setNuevaAccion] = useState('');
   const [nuevaFecha, setNuevaFecha] = useState('');
@@ -268,11 +269,12 @@ export default function FichaProspecto() {
   }
 
   async function convertirACliente() {
-    if (!prospecto) return;
+    if (!prospecto || convirtiendo) return; // guard anti doble-clic
     if (prospecto.cliente_id) {
       alert('Este prospecto ya fue convertido en cliente anteriormente.');
       return;
     }
+    setConvirtiendo(true);
 
     // Conversión TRANSACCIONAL en el servidor (RPC): crea el cliente,
     // migra citas/oportunidades/diagnósticos/trámites/servicios y sella
@@ -282,10 +284,17 @@ export default function FichaProspecto() {
     });
 
     if (error || !clienteId) {
-      alert('No se pudo convertir: ' + (error?.message || 'error desconocido'));
+      // Error original visible en consola para diagnóstico; mensaje claro al usuario.
+      console.error('convertir_prospecto_a_cliente:', error);
+      const detalle = error?.message || 'error desconocido';
+      const pista = detalle.includes('function') || detalle.includes('schema')
+        ? '\n\nPista: parece que falta correr la migración en Supabase (reparacion_integral_20260718.sql).'
+        : '';
+      alert('No se pudo convertir: ' + detalle + pista);
+      setConvirtiendo(false); // el botón queda disponible tras el fallo
     } else {
       alert('🎉 ¡Venta Cerrada!\n\nCliente creado e historial migrado. Ahora te llevaré a su Expediente para registrar la póliza.');
-      router.push(`/clientes/${clienteId}?nuevaPoliza=true`);
+      router.push(`/clientes/${clienteId}?nuevaPoliza=true`); // solo navega tras éxito
     }
   }
 
@@ -602,8 +611,8 @@ export default function FichaProspecto() {
 
         {prospecto?.estado !== 'Convertido' && (
           <div className="pt-4 border-t border-ink/10">
-            <button onClick={convertirACliente} className="w-full lumo-btn-primary py-4 rounded-2xl flex items-center justify-center gap-2">
-              <Icon name="rocket" size={18} /> Convertir en Cliente (Venta Directa)
+            <button onClick={convertirACliente} disabled={convirtiendo} className="w-full lumo-btn-primary py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+              <Icon name="rocket" size={18} /> {convirtiendo ? 'Convirtiendo…' : 'Convertir en Cliente (Venta Directa)'}
             </button>
             <p className="text-center font-hand text-base text-ink-faint mt-2">¿el cliente compró sin embudo? úsalo sin culpa.</p>
           </div>

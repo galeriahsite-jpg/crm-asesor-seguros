@@ -249,16 +249,16 @@ export default function Ventas() {
                 const val = e.target.value;
                 if (val === "") setPersonaSeleccionada(null);
                 else {
-                  const [id, tipo] = val.split('-');
+                  const [id, tipo] = val.split('|');
                   setPersonaSeleccionada({ id, tipo });
                 }
               }}
-              value={personaSeleccionada ? `${personaSeleccionada.id}-${personaSeleccionada.tipo}` : ""}
+              value={personaSeleccionada ? `${personaSeleccionada.id}|${personaSeleccionada.tipo}` : ""}
               className="lumo-input"
             >
               <option value="">-- Elige un Prospecto o Cliente --</option>
               {personas.map(p => (
-                <option key={`${p.id}-${p.tipo}`} value={`${p.id}-${p.tipo}`}>
+                <option key={`${p.id}-${p.tipo}`} value={`${p.id}|${p.tipo}`}>
                   {p.nombre} ({p.tipo})
                 </option>
               ))}

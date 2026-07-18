@@ -25,6 +25,7 @@ export default function Prospectos() {
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [convirtiendoId, setConvirtiendoId] = useState<string | null>(null);
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState('');
@@ -127,15 +128,23 @@ export default function Prospectos() {
   }
 
   async function convertirACliente(p: Prospecto) {
+    if (convirtiendoId) return; // guard anti doble-clic
+    setConvirtiendoId(p.id);
+
     // Conversión TRANSACCIONAL en el servidor (RPC): crea el cliente,
     // migra citas/oportunidades/diagnósticos/trámites/servicios y sella
     // el prospecto en una sola transacción. O todo, o nada.
     const { error } = await supabase.rpc('convertir_prospecto_a_cliente', {
       p_prospecto_id: p.id,
     });
+    setConvirtiendoId(null);
 
     if (error) {
-      alert('No se pudo convertir: ' + error.message);
+      console.error('convertir_prospecto_a_cliente:', error);
+      const pista = error.message.includes('function') || error.message.includes('schema')
+        ? '\n\nPista: parece que falta correr la migración en Supabase (reparacion_integral_20260718.sql).'
+        : '';
+      alert('No se pudo convertir: ' + error.message + pista);
     } else {
       alert('🎉 ¡Venta Directa Registrada!\n\nCliente creado en tu cartera. Te agendé automáticamente una revisión postventa para dentro de 15 días.');
       cargarProspectos();
@@ -329,9 +338,10 @@ export default function Prospectos() {
 
                     <button
                       onClick={() => convertirACliente(p)}
-                      className="text-xs bg-azul-soft text-azul border border-azul/30 hover:bg-azul hover:text-white font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5"
+                      disabled={convirtiendoId !== null}
+                      className="text-xs bg-azul-soft text-azul border border-azul/30 hover:bg-azul hover:text-white font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
                     >
-                      <Icon name="rocket" size={14} /> Venta Directa
+                      <Icon name="rocket" size={14} /> {convirtiendoId === p.id ? 'Convirtiendo…' : 'Venta Directa'}
                     </button>
                   </div>
                 </>

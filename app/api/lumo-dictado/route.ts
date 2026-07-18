@@ -79,7 +79,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Formato de audio no soportado.' }, { status: 415 });
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // Timeout defensivo: Whisper + extracción no deben colgar la ruta.
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 60000, maxRetries: 1 });
   const modelo = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const inicio = Date.now();
 

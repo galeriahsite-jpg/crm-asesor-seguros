@@ -144,6 +144,7 @@ export async function POST(request: Request) {
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      signal: AbortSignal.timeout(30000), // timeout defensivo
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,

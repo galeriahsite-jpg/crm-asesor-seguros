@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
+import { registrarActividad } from '../lib/actividades';
 
 type Cita = {
   id: string;
@@ -71,6 +72,12 @@ export default function Agenda() {
     if (error) {
       alert('Error al guardar: ' + error.message);
     } else {
+      void registrarActividad({
+        tipo: 'cita_creada',
+        descripcion: `${tipo} · ${fecha} ${hora} · ${personaSeleccionada.nombre}`,
+        prospecto_id: personaSeleccionada.tipo === 'prospecto' ? personaSeleccionada.id : null,
+        cliente_id: personaSeleccionada.tipo === 'cliente' ? personaSeleccionada.id : null,
+      });
       setFecha(''); setHora(''); setTipo('Llamada'); setPersonaSeleccionada(null);
       setMostrarForm(false);
       cargarCitas();
@@ -86,7 +93,16 @@ export default function Agenda() {
   async function cambiarEstadoCita(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('citas').update({ estado: nuevoEstado }).eq('id', id);
     if (error) alert('Error al actualizar');
-    else cargarCitas();
+    else {
+      const cita = citas.find(c => c.id === id);
+      if (nuevoEstado !== 'Pendiente') {
+        void registrarActividad({
+          tipo: 'cita_resultado',
+          descripcion: `${cita?.tipo || 'Cita'} de ${cita?.titulo || ''} → ${nuevoEstado}`,
+        });
+      }
+      cargarCitas();
+    }
   }
 
   function iniciarEdicion(c: Cita) {
@@ -167,18 +183,18 @@ export default function Agenda() {
                 onChange={(e) => {
                   if (e.target.value === "") setPersonaSeleccionada(null);
                   else {
-                    const [id, tipo, ...nombreParts] = e.target.value.split('-');
-                    const nombre = nombreParts.join('-');
+                    const [id, tipo, ...nombreParts] = e.target.value.split('|');
+                    const nombre = nombreParts.join('|');
                     setPersonaSeleccionada({ id, tipo, nombre });
                   }
                 }}
-                value={personaSeleccionada ? `${personaSeleccionada.id}-${personaSeleccionada.tipo}-${personaSeleccionada.nombre}` : ""}
+                value={personaSeleccionada ? `${personaSeleccionada.id}|${personaSeleccionada.tipo}|${personaSeleccionada.nombre}` : ""}
                 required
                 className="lumo-input"
               >
                 <option value="">-- Elige un Prospecto o Cliente --</option>
                 {personas.map(p => (
-                  <option key={`${p.id}-${p.tipo}`} value={`${p.id}-${p.tipo}-${p.nombre}`}>
+                  <option key={`${p.id}-${p.tipo}`} value={`${p.id}|${p.tipo}|${p.nombre}`}>
                     {p.nombre} ({p.tipo})
                   </option>
                 ))}

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
+import { registrarActividad } from '../lib/actividades';
 
 type Servicio = {
   id: string;
@@ -72,6 +73,12 @@ export default function Servicios() {
     if (error) {
       alert('Error al guardar: ' + error.message);
     } else {
+      void registrarActividad({
+        tipo: 'servicio_abierto',
+        descripcion: `${tipo} · ${personaSeleccionada.nombre}`,
+        prospecto_id: personas.find(p => p.id === personaSeleccionada.id && p.tipo === 'prospecto') ? personaSeleccionada.id : null,
+        cliente_id: personas.find(p => p.id === personaSeleccionada.id && p.tipo === 'cliente') ? personaSeleccionada.id : null,
+      });
       setDescripcion(''); setNota(''); setPersonaSeleccionada(null);
       cargarServicios();
     }
@@ -135,18 +142,18 @@ export default function Servicios() {
               onChange={(e) => {
                 if (e.target.value === "") setPersonaSeleccionada(null);
                 else {
-                  const [id, , ...nombreParts] = e.target.value.split('-');
-                  const nombre = nombreParts.join('-');
+                  const [id, , ...nombreParts] = e.target.value.split('|');
+                  const nombre = nombreParts.join('|');
                   setPersonaSeleccionada({ id, nombre });
                 }
               }}
-              value={personaSeleccionada ? `${personaSeleccionada.id}-x-${personaSeleccionada.nombre}` : ""}
+              value={personaSeleccionada ? `${personaSeleccionada.id}|x|${personaSeleccionada.nombre}` : ""}
               required
               className="lumo-input"
             >
               <option value="">-- Elige un Prospecto o Cliente --</option>
               {personas.map(p => (
-                <option key={`${p.id}-${p.tipo}`} value={`${p.id}-${p.tipo}-${p.nombre}`}>
+                <option key={`${p.id}-${p.tipo}`} value={`${p.id}|${p.tipo}|${p.nombre}`}>
                   {p.nombre} ({p.tipo})
                 </option>
               ))}
