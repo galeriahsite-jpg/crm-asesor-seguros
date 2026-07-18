@@ -59,7 +59,7 @@ export default function TelefonoInput({
           value={pais}
           onChange={e => onChangePais(e.target.value as PaisTelefono)}
           aria-label="País del teléfono"
-          className="lumo-input w-24 shrink-0 px-2"
+          className="lumo-input w-[4.6rem] shrink-0 px-1.5 py-2 text-sm"
         >
           <option value="MX">🇲🇽 +52</option>
           <option value="US">🇺🇸 +1</option>
@@ -76,7 +76,7 @@ export default function TelefonoInput({
           required={required}
           minLength={required ? 10 : undefined}
           maxLength={10}
-          className={`${className} ${mostrarContador ? 'pr-16' : ''} w-full`}
+          className={`${className} ${mostrarContador ? 'pr-14' : ''} w-full`}
         />
         {mostrarContador && value.length > 0 && (
           <span

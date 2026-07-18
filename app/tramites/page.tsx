@@ -117,10 +117,10 @@ export default function Tramites() {
 
   return (
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
-      <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+      <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-lg text-ink-soft leading-none mb-1">seguimiento aseguradoras</p>
-          <h1 className="text-4xl font-bold text-ink tracking-tight">Trámites</h1>
+          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">seguimiento aseguradoras</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Trámites</h1>
         </div>
         <Link href="/ventas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
@@ -130,7 +130,7 @@ export default function Tramites() {
         texto="Entre la venta aceptada y la póliza emitida está el trámite. Destraba primero los atorados: información incompleta o pago pendiente detienen la emisión."
       />
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
         <form onSubmit={guardarTramite} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">

@@ -228,7 +228,7 @@ export default function LandingLead({ config }: { config: LandingConfig }) {
           <Icon name={config.icono} size={28} />
         </div>
         <p className="font-hand text-xl text-ink-soft leading-none mb-2">{config.kicker}</p>
-        <h1 className="text-3xl font-bold text-ink tracking-tight">{config.titulo}</h1>
+        <h1 className="text-2xl font-bold text-ink tracking-tight">{config.titulo}</h1>
         <p className="text-ink-soft mt-3">{config.subtitulo}</p>
       </header>
 

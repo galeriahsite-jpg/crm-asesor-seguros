@@ -169,7 +169,7 @@ export default function Solicitud() {
           <Icon name="shield" size={28} />
         </div>
         <p className="font-hand text-xl text-ink-soft leading-none mb-2">protege lo que más importa</p>
-        <h1 className="text-3xl font-bold text-ink tracking-tight">
+        <h1 className="text-2xl font-bold text-ink tracking-tight">
           Solicita información en menos de un minuto
         </h1>
         <p className="text-ink-soft mt-3">

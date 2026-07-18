@@ -160,10 +160,10 @@ export default function Clientes() {
   return (
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
 
-      <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+      <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-lg text-ink-soft leading-none mb-1">cartera y pólizas activas</p>
-          <h1 className="text-4xl font-bold text-ink tracking-tight">Clientes</h1>
+          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">cartera y pólizas activas</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Clientes</h1>
         </div>
         <Link href="/servicios" className="text-xs text-rojo border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-rojo-soft font-semibold flex items-center gap-1.5 mb-1">
           <Icon name="heart" size={14} /> Servicio
@@ -175,7 +175,7 @@ export default function Clientes() {
         texto="Ya te compraron: aquí se cuida la relación. Registra sus pólizas, atiende sus servicios y llega a las renovaciones ANTES de que venzan. De aquí salen los referidos."
       />
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
 
         <form onSubmit={guardarCliente} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>

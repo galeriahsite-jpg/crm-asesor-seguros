@@ -232,7 +232,7 @@ export default function Prospectos() {
         texto="Aquí viven las personas que aún NO te compran. El orden es: contactar → diagnosticar → cotizar. Cuando alguien compra, se convierte en Cliente y sale de esta lista."
       />
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
 
         {/* Formulario Captura Rápida (plegable) */}
         {mostrarForm && (

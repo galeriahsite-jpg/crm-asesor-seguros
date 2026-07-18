@@ -37,7 +37,7 @@ export default function Login() {
         <div className="text-center mb-8">
           {/* Aquí va tu logo */}
           <img src="/logo.png" alt="Logo LUMO" className="w-24 h-24 mx-auto mb-4 object-contain" />
-          <h1 className="text-3xl font-bold text-ink tracking-tight">LUMO</h1>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">LUMO</h1>
           <p className="font-hand text-xl text-ink-soft mt-1">tu asistente digital personal</p>
         </div>
 

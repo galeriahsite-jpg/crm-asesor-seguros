@@ -240,11 +240,11 @@ export default function Home() {
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto relative">
 
       {/* Header LUMO */}
-      <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+      <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-xl mb-2" />
-          <p className="font-hand text-lg text-ink-soft leading-none mb-1">tu espacio. tus ideas. tu día.</p>
-          <h1 className="text-4xl font-bold text-ink tracking-tight">Hoy</h1>
+          <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg mb-1.5" />
+          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">tu espacio. tus ideas. tu día.</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Hoy</h1>
           {usuarioEmail && (
             <p className="text-xs text-ink-soft mt-1 flex items-center gap-1">
               <Icon name="user" size={12} /> {usuarioEmail}
@@ -264,7 +264,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
 
         {/* Alertas Rojas (Urgente) */}
         <div className="space-y-3">
@@ -341,13 +341,13 @@ export default function Home() {
 
             <Link href="/agenda" className="lumo-card p-5 hover:border-azul transition-colors">
               <Icon name="phone" size={22} className="text-azul mb-4" />
-              <p className="text-4xl font-bold text-ink tracking-tighter">{totalLlamadas}</p>
+              <p className="text-2xl font-bold text-ink tracking-tighter">{totalLlamadas}</p>
               <p className="text-xs text-ink-soft font-medium mt-1">Llamadas pendientes</p>
             </Link>
 
             <Link href="/prospectos" className="lumo-card p-5 hover:border-azul transition-colors">
               <Icon name="user" size={22} className="text-azul mb-4" />
-              <p className="text-4xl font-bold text-ink tracking-tighter">{totalProspectos}</p>
+              <p className="text-2xl font-bold text-ink tracking-tighter">{totalProspectos}</p>
               <p className="text-xs text-ink-soft font-medium mt-1">Prospectos activos</p>
             </Link>
 
@@ -355,7 +355,7 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <div>
                   <Icon name="refresh" size={22} className="text-white/80 mb-4" />
-                  <p className="text-4xl font-bold text-white tracking-tighter">{totalRenovaciones}</p>
+                  <p className="text-3xl font-bold text-white tracking-tighter">{totalRenovaciones}</p>
                   <p className="text-xs text-white/70 font-medium mt-1">Renovaciones en 30 días</p>
                 </div>
                 <div className="text-right">

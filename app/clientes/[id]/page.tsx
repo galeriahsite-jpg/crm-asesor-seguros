@@ -158,15 +158,15 @@ export default function ExpedienteCliente() {
 
   return (
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
-      <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+      <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-lg text-ink-soft leading-none mb-1">historial completo</p>
-          <h1 className="text-3xl font-bold text-ink tracking-tight">Expediente 360°</h1>
+          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">historial completo</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Expediente 360°</h1>
         </div>
         <Link href="/clientes" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
 
         <div className="lumo-card relative p-5">
           <span className="lumo-tape"></span>

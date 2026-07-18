@@ -179,7 +179,7 @@ export default function Agenda() {
         texto="Las citas mueven el proceso. Orden de lectura: primero las vencidas sin resultado (regístralas o reprográmalas), luego las de hoy, y al final lo que viene."
       />
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
         {mostrarForm && (
         <form onSubmit={guardarCita} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>

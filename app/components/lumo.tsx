@@ -106,11 +106,11 @@ const ETAPAS_PROCESO = ['Captar', 'Contactar', 'Diagnosticar', 'Cotizar', 'Cerra
 
 export function FlujoProceso({ paso, texto }: { paso: number; texto: string }) {
   return (
-    <div className="px-6 pt-4">
+    <div className="px-4 pt-2.5">
       <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
         {ETAPAS_PROCESO.map((e, i) => (
           <span key={e} className="flex items-center gap-1 shrink-0">
-            <span className={`text-xs font-bold px-2 py-1 rounded-md tracking-wide ${
+            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded tracking-normal ${
               i === paso
                 ? 'bg-azul text-white'
                 : i < paso
@@ -121,7 +121,7 @@ export function FlujoProceso({ paso, texto }: { paso: number; texto: string }) {
           </span>
         ))}
       </div>
-      <p className="text-xs text-ink-soft mt-1.5 leading-snug">{texto}</p>
+      <p className="text-xs text-ink-faint mt-1 leading-snug">{texto}</p>
     </div>
   );
 }
@@ -134,10 +134,10 @@ export function PageHeader({ titulo, subtitulo, children }: {
   titulo: string; subtitulo?: string; children?: React.ReactNode;
 }) {
   return (
-    <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+    <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
       <div>
-        {subtitulo && <p className="font-hand text-lg text-ink-soft leading-none mb-1">{subtitulo}</p>}
-        <h1 className="text-4xl font-bold text-ink tracking-tight">{titulo}</h1>
+        {subtitulo && <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">{subtitulo}</p>}
+        <h1 className="text-2xl font-bold text-ink tracking-tight">{titulo}</h1>
       </div>
       {children && <div className="flex gap-2 items-center pb-1">{children}</div>}
     </header>

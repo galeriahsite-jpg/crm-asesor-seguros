@@ -217,10 +217,10 @@ export default function Ventas() {
 
   return (
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
-      <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
+      <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-lg text-ink-soft leading-none mb-1">cotizaciones y embudo</p>
-          <h1 className="text-4xl font-bold text-ink tracking-tight">Ventas</h1>
+          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">cotizaciones y embudo</p>
+          <h1 className="text-2xl font-bold text-ink tracking-tight">Ventas</h1>
         </div>
         <div className="flex gap-2 mb-1">
           <Link href="/diagnosticos" className="text-xs text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold flex items-center gap-1.5">
@@ -240,7 +240,7 @@ export default function Ventas() {
         texto="Cada persona tiene UNA oportunidad que avanza por etapas; las cotizaciones por aseguradora viven adentro. Lo primero de la lista es lo que está más atrás en el proceso."
       />
 
-      <main className="p-6 space-y-8">
+      <main className="p-4 space-y-5">
         {mostrarForm && (
         <form onSubmit={guardarOportunidad} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
@@ -319,7 +319,7 @@ export default function Ventas() {
               {/* Cotizaciones por aseguradora */}
               <div className="mt-2 space-y-2">
                 {o.cotizaciones.map(c => (
-                  <div key={c.id} className="flex items-center gap-2 bg-paper rounded-lg px-2.5 py-2">
+                  <div key={c.id} className="flex flex-wrap items-center gap-2 bg-paper rounded-lg px-2.5 py-2 min-w-0">
                     <span className={`lumo-chip ${chipEstadoCot(c.estado)}`}>{c.aseguradora}</span>
                     {editCotId === c.id ? (
                       <form onSubmit={(e) => guardarPrimaCotizacion(e, c)} className="flex-1 flex gap-1">
@@ -352,7 +352,7 @@ export default function Ventas() {
                 ))}
 
                 {agregandoCotEn === o.id ? (
-                  <form onSubmit={(e) => agregarCotizacion(e, o.id)} className="flex gap-2 items-center">
+                  <form onSubmit={(e) => agregarCotizacion(e, o.id)} className="flex flex-wrap gap-2 items-center">
                     <select value={cotAseguradora} onChange={(e) => setCotAseguradora(e.target.value)} className="lumo-input py-2 text-sm w-2/5">
                       {ASEGURADORAS.map(a => <option key={a}>{a}</option>)}
                     </select>
