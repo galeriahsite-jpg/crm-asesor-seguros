@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
    LUMO · Iconos de línea (SVG stroke, estilo cuaderno)
    ============================================================ */
 
-type IconName =
+export type IconName =
   | 'hoy' | 'user' | 'calendar' | 'ventas' | 'clientes'
   | 'bell' | 'phone' | 'edit' | 'trash' | 'search'
   | 'arrow' | 'chart' | 'folder' | 'settings' | 'alert'

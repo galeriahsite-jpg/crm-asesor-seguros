@@ -1,0 +1,169 @@
+{
+  "name": "Cotizaciones Seguros - CRM Asesor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cotizar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook Cotizar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "crm-cotizar"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "supabase_url",
+              "value": "https://TU-PROYECTO.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "service_key",
+              "value": "PEGA_AQUI_TU_SERVICE_ROLE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "prospecto_id",
+              "value": "={{ $json.body.prospecto_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "producto",
+              "value": "={{ $json.body.producto || 'Seguro de Auto' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.supabase_url }}/rest/v1/prospectos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $json.prospecto_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,nombre,telefono,user_id"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.service_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.service_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Buscar Prospecto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Config').first().json;\nconst p = $input.first().json;\nif (!p || !p.id) {\n  throw new Error('Prospecto no encontrado en Supabase');\n}\n\nconst aseguradoras = [\n  { nombre: 'AXA', url: 'https://axa.mx/' },\n  { nombre: 'HDI', url: 'https://www.hdi.com.mx/personas/seguros-autos/' },\n  { nombre: 'ABA Seguros', url: 'https://miauto.com.mx/seguros/aba' },\n  { nombre: 'GNP', url: 'https://www.gnp.com.mx/' },\n  { nombre: 'MetLife', url: 'https://www.metlife.com.mx/' },\n  { nombre: 'Profuturo', url: 'https://www.profuturo.mx/' }\n];\n\nconst rows = aseguradoras.map(a => ({\n  cliente: p.nombre,\n  producto: config.producto,\n  aseguradora: a.nombre,\n  prima: null,\n  estado: 'Cotizando',\n  prospecto_id: p.id,\n  user_id: p.user_id\n}));\n\nconst links = aseguradoras.map(a => ({ aseguradora: a.nombre, cotizar_en: a.url }));\n\nreturn [{ json: { rows, links, prospecto: { id: p.id, nombre: p.nombre, telefono: p.telefono } } }];"
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Preparar Cotizaciones",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.supabase_url }}/rest/v1/oportunidades",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').first().json.service_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.service_key }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Guardar en Oportunidades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, mensaje: 'Cotizaciones creadas en el CRM (estado: Cotizando)', prospecto: $('Preparar Cotizaciones').first().json.prospecto, links: $('Preparar Cotizaciones').first().json.links }) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Cotizar": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Buscar Prospecto", "type": "main", "index": 0 }]]
+    },
+    "Buscar Prospecto": {
+      "main": [[{ "node": "Preparar Cotizaciones", "type": "main", "index": 0 }]]
+    },
+    "Preparar Cotizaciones": {
+      "main": [[{ "node": "Guardar en Oportunidades", "type": "main", "index": 0 }]]
+    },
+    "Guardar en Oportunidades": {
+      "main": [[{ "node": "Responder", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

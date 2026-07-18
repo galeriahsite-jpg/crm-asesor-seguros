@@ -26,7 +26,7 @@ const SUPABASE_URL =
 // Si cambias el texto del aviso de privacidad, actualiza esta versión.
 const CONSENTIMIENTO_VERSION = '2026-07';
 
-const INTERESES_VALIDOS = ['Vida', 'Gastos Médicos', 'Auto', 'Hogar', 'Retiro'] as const;
+const INTERESES_VALIDOS = ['Vida', 'Gastos Médicos', 'Auto', 'Hogar', 'Retiro', 'Empresas', 'Referido'] as const;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -44,7 +44,33 @@ type LeadValidado = {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  detalles: string | null;
 };
+
+// ── Detalles extra por landing (auto, retiro, empresas, etc.) ──
+//    Se validan con límites estrictos y se serializan a texto
+//    para guardarse en nota_entrada_web (sin cambiar el esquema).
+const DETALLES_MAX_CAMPOS = 15;
+const DETALLES_MAX_CLAVE = 40;
+const DETALLES_MAX_VALOR = 200;
+
+function validarDetalles(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) return null;
+  const entradas = Object.entries(v as Record<string, unknown>).slice(0, DETALLES_MAX_CAMPOS);
+  const partes: string[] = [];
+  for (const [clave, valor] of entradas) {
+    const k = clave.trim().slice(0, DETALLES_MAX_CLAVE);
+    if (!k) continue;
+    let val: string;
+    if (typeof valor === 'string') val = valor.trim().slice(0, DETALLES_MAX_VALOR);
+    else if (typeof valor === 'number' || typeof valor === 'boolean') val = String(valor);
+    else continue;
+    if (!val) continue;
+    partes.push(`${k}: ${val}`);
+  }
+  return partes.length ? partes.join(' | ') : null;
+}
 
 function normalizarTelefonoMX(entrada: string): string | null {
   const digitos = entrada.replace(/\D/g, '');
@@ -100,6 +126,7 @@ function validarLead(body: Record<string, unknown>):
       utm_source: campoUtm(body.utm_source),
       utm_medium: campoUtm(body.utm_medium),
       utm_campaign: campoUtm(body.utm_campaign),
+      detalles: validarDetalles(body.detalles),
     },
   };
 }
@@ -175,7 +202,9 @@ export async function POST(request: Request) {
   }
 
   const ahora = new Date().toISOString();
-  const notaWeb = `Solicitud web · interés: ${lead.interes} · ${ahora}`;
+  const notaWeb =
+    `Solicitud web · interés: ${lead.interes} · ${ahora}` +
+    (lead.detalles ? ` · ${lead.detalles}` : '');
 
   // ── Inserción atómica: ON CONFLICT DO NOTHING sobre el índice
   //    único (user_id, telefono_normalizado). Sin carrera posible. ──
