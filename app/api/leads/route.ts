@@ -23,7 +23,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { configSupabase } from '../_lib/servidor';
-import { normalizarTelefonoMX } from '../../lib/telefono';
+import { normalizarTelefono } from '../../lib/telefono';
 
 // Si cambias el texto del aviso de privacidad, actualiza esta versión.
 const CONSENTIMIENTO_VERSION = '2026-07';
@@ -83,9 +83,10 @@ const leadSchema = z.object({
       .max(80, 'Escribe tu nombre (2 a 80 caracteres).')
   ),
   telefono: z.preprocess(
-    v => (typeof v === 'string' ? normalizarTelefonoMX(v) : null),
-    z.string({ error: 'Escribe un número de WhatsApp válido de 10 dígitos.' })
+    v => (typeof v === 'string' ? v.trim().slice(0, 30) : ''),
+    z.string().min(1, 'Escribe un número de WhatsApp válido de 10 dígitos.')
   ),
+  telefono_pais: z.enum(['MX', 'US']).optional().default('MX'),
   interes: z.preprocess(
     v => (typeof v === 'string' ? v.trim() : ''),
     z.enum(INTERESES_VALIDOS, { error: 'Selecciona el seguro que te interesa.' })
@@ -170,7 +171,16 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const lead = validacion.data;
+  const lead0 = validacion.data;
+  // Normalización/validación estructural según el país declarado.
+  const telefonoNormalizado = normalizarTelefono(lead0.telefono, lead0.telefono_pais);
+  if (!telefonoNormalizado) {
+    return Response.json(
+      { error: 'Escribe un número de WhatsApp válido de 10 dígitos.' },
+      { status: 400 }
+    );
+  }
+  const lead = { ...lead0, telefono: telefonoNormalizado };
   const detallesTexto = serializarDetalles(lead.detalles);
 
   // ── Verificar que el dueño configurado sea un usuario real ──
@@ -195,6 +205,7 @@ export async function POST(request: Request) {
         user_id: ownerId,
         nombre: lead.nombre,
         telefono: lead.telefono,
+        telefono_pais: lead.telefono_pais,
         telefono_normalizado: lead.telefono,
         producto: lead.interes,
         estado: 'Nuevo',

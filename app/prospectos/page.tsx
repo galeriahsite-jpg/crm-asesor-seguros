@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 import LumoDictado from '../components/LumoDictado';
 import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
-import { validarTelefonoOpcional } from '../lib/telefono';
+import { validarTelefonoOpcional, enlaceWhatsApp, verificarTelefonoReal, type PaisTelefono } from '../lib/telefono';
 import TelefonoInput from '../components/TelefonoInput';
 
 type Prospecto = {
   id: string;
   nombre: string;
   telefono: string;
+  telefono_pais?: string;
   producto: string;
   nota: string;
   estado: string;
@@ -22,6 +23,7 @@ type Prospecto = {
 export default function Prospectos() {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoPais, setTelefonoPais] = useState<PaisTelefono>('MX');
   const [producto, setProducto] = useState('');
   const [nota, setNota] = useState('');
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
@@ -32,6 +34,7 @@ export default function Prospectos() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState('');
   const [editTelefono, setEditTelefono] = useState('');
+  const [editTelefonoPais, setEditTelefonoPais] = useState<PaisTelefono>('MX');
   const [editProducto, setEditProducto] = useState('');
   const [editNota, setEditNota] = useState('');
 
@@ -60,13 +63,26 @@ export default function Prospectos() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert("Tu sesión ha expirado."); return; }
 
-    // Teléfono opcional; si viene, debe ser un número MX válido.
-    const tel = validarTelefonoOpcional(telefono);
+    // Teléfono opcional; si viene, debe cumplir la estructura del país.
+    const tel = validarTelefonoOpcional(telefono, telefonoPais);
     if (!tel.ok) { alert(tel.error); return; }
+
+    // Verificación REAL (nivel 4): solo actúa si hay proveedor
+    // configurado (Twilio); si no, devuelve null y no estorba.
+    if (tel.telefono) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const valido = await verificarTelefonoReal(tel.telefono, telefonoPais, session.access_token);
+        if (valido === false && !confirm('El verificador indica que este número NO parece válido.\n\n¿Guardar de todos modos?')) {
+          return;
+        }
+      }
+    }
 
     const { data: nuevo, error } = await supabase.from('prospectos').insert([{
       nombre,
       telefono: tel.telefono,
+      telefono_pais: tel.telefono ? telefonoPais : null,
       producto,
       nota,
       estado: 'Nuevo',
@@ -113,19 +129,20 @@ export default function Prospectos() {
   function iniciarEdicion(p: Prospecto) {
     setEditandoId(p.id);
     setEditNombre(p.nombre);
-    setEditTelefono(p.telefono);
+    setEditTelefono(p.telefono || '');
+    setEditTelefonoPais((p.telefono_pais === 'US' ? 'US' : 'MX'));
     setEditProducto(p.producto);
     setEditNota(p.nota);
   }
 
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
-    const tel = validarTelefonoOpcional(editTelefono);
+    const tel = validarTelefonoOpcional(editTelefono, editTelefonoPais);
     if (!tel.ok) { alert(tel.error); return; }
 
     const { error } = await supabase
       .from('prospectos')
-      .update({ nombre: editNombre, telefono: tel.telefono, producto: editProducto, nota: editNota })
+      .update({ nombre: editNombre, telefono: tel.telefono, telefono_pais: tel.telefono ? editTelefonoPais : null, producto: editProducto, nota: editNota })
       .eq('id', id);
 
     if (error) {
@@ -161,10 +178,6 @@ export default function Prospectos() {
   }
 
    function abrirWhatsApp(p: Prospecto) {
-    let limpio = p.telefono.replace(/[^0-9]/g, '');
-    if (limpio.length === 10) {
-      limpio = '52' + limpio; // Agrega el 52 si es un número mexicano de 10 dígitos
-    }
     // Línea de tiempo + sellado de primer contacto (speed-to-lead)
     void registrarActividad({
       tipo: 'contacto_whatsapp',
@@ -172,7 +185,8 @@ export default function Prospectos() {
       prospecto_id: p.id,
     });
     void sellarPrimerContacto(p.id, 'whatsapp');
-    window.open(`https://wa.me/${limpio}`, '_blank');
+    // Prefijo correcto según el país del número (52 MX / 1 US).
+    window.open(enlaceWhatsApp(p.telefono, p.telefono_pais), '_blank');
   }
 
   const prospectosFiltrados = prospectos.filter(p =>
@@ -225,7 +239,7 @@ export default function Prospectos() {
               required
               className="lumo-input"
             />
-            <TelefonoInput value={telefono} onChange={setTelefono} placeholder="Teléfono (10 dígitos, opcional)" />
+            <TelefonoInput value={telefono} onChange={setTelefono} pais={telefonoPais} onChangePais={setTelefonoPais} placeholder="Teléfono (10 dígitos, opcional)" />
             <select
               value={producto}
               onChange={(e) => setProducto(e.target.value)}
@@ -285,7 +299,7 @@ export default function Prospectos() {
                 /* Modo Edición */
                 <form onSubmit={(e) => guardarEdicion(e, p.id)} className="space-y-3">
                   <input type="text" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="lumo-input p-2" />
-                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} className="lumo-input p-2" />
+                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} pais={editTelefonoPais} onChangePais={setEditTelefonoPais} className="lumo-input p-2" />
                   <select value={editProducto} onChange={(e) => setEditProducto(e.target.value)} className="lumo-input p-2">
                     <option value="">Sin producto</option>
                     <option value="Vida">Vida</option>

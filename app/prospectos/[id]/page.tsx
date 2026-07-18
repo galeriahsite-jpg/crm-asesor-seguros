@@ -8,6 +8,7 @@ import {
   registrarActividad, sellarPrimerContacto, tiempoTranscurrido,
   ETIQUETAS_ACTIVIDAD, type Actividad,
 } from '../../lib/actividades';
+import { enlaceWhatsApp } from '../../lib/telefono';
 
 type Cita = { id: string; fecha: string; hora: string; tipo: string; estado: string };
 type Oportunidad = { id: string; producto: string; aseguradora: string; prima: string; estado: string };
@@ -412,7 +413,7 @@ export default function FichaProspecto() {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             {prospecto?.telefono && (
-             <a href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={abrirWhatsAppFicha} className="text-center text-sm bg-green-600/20 text-green-400 border border-green-800 font-medium py-2 rounded-lg hover:bg-green-600/40">WhatsApp</a>
+             <a href={enlaceWhatsApp(prospecto.telefono, prospecto.telefono_pais)} target="_blank" rel="noopener noreferrer" onClick={abrirWhatsAppFicha} className="text-center text-sm bg-green-600/20 text-green-400 border border-green-800 font-medium py-2 rounded-lg hover:bg-green-600/40">WhatsApp</a>
             )}
             <button onClick={() => { setMostrarFormCita(!mostrarFormCita); setMostrarFormDiag(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-azul-soft text-azul border border-azul/20 font-semibold py-2 rounded-lg hover:bg-azul hover:text-white transition-colors">Agendar Cita</button>
             <button onClick={() => { setMostrarFormDiag(!mostrarFormDiag); setMostrarFormCita(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-paper text-ink border border-ink/15 font-semibold py-2 rounded-lg hover:bg-ink hover:text-white transition-colors">Diagnóstico</button>
@@ -437,7 +438,7 @@ export default function FichaProspecto() {
                 <button onClick={() => navigator.clipboard.writeText(mensajeIA)} className="lumo-btn-ghost px-3 py-2 text-xs">Copiar</button>
                 {prospecto?.telefono && (
                   <a
-                    href={`https://wa.me/${prospecto.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + prospecto.telefono.replace(/[^0-9]/g, '') : prospecto.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(mensajeIA)}`}
+                    href={enlaceWhatsApp(prospecto.telefono, prospecto.telefono_pais, mensajeIA)}
                     target="_blank" rel="noopener noreferrer"
                     onClick={abrirWhatsAppFicha}
                     className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-xl border border-verde/20 font-semibold"

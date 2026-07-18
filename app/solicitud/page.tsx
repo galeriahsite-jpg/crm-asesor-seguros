@@ -13,6 +13,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Icon } from '../components/lumo';
 import TelefonoInput from '../components/TelefonoInput';
+import type { PaisTelefono } from '../lib/telefono';
 
 const INTERESES = ['Vida', 'Gastos Médicos', 'Auto', 'Hogar', 'Retiro'];
 
@@ -21,6 +22,7 @@ function FormularioSolicitud() {
 
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoPais, setTelefonoPais] = useState<PaisTelefono>('MX');
   const [interes, setInteres] = useState('');
   const [consentimiento, setConsentimiento] = useState(false);
   const [honeypot, setHoneypot] = useState('');
@@ -39,6 +41,7 @@ function FormularioSolicitud() {
         body: JSON.stringify({
           nombre,
           telefono,
+          telefono_pais: telefonoPais,
           interes,
           consentimiento,
           sitio_web: honeypot, // honeypot: los humanos no lo ven ni lo llenan
@@ -95,7 +98,7 @@ function FormularioSolicitud() {
 
       <div>
         <label className="block text-sm font-semibold text-ink-soft mb-1">Tu WhatsApp</label>
-        <TelefonoInput value={telefono} onChange={setTelefono} required />
+        <TelefonoInput value={telefono} onChange={setTelefono} pais={telefonoPais} onChangePais={setTelefonoPais} required />
       </div>
 
       <div>

@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Icon, type IconName } from './lumo';
 import TelefonoInput from './TelefonoInput';
+import type { PaisTelefono } from '../lib/telefono';
 
 export type CampoExtra = {
   clave: string;
@@ -43,6 +44,7 @@ function Formulario({ config }: { config: LandingConfig }) {
 
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoPais, setTelefonoPais] = useState<PaisTelefono>('MX');
   const [interes, setInteres] = useState(config.opcionesInteres ? '' : config.interes);
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [consentimiento, setConsentimiento] = useState(false);
@@ -67,6 +69,7 @@ function Formulario({ config }: { config: LandingConfig }) {
         body: JSON.stringify({
           nombre,
           telefono,
+          telefono_pais: telefonoPais,
           interes,
           consentimiento,
           sitio_web: honeypot, // honeypot: los humanos no lo ven ni lo llenan
@@ -128,7 +131,7 @@ function Formulario({ config }: { config: LandingConfig }) {
         <label className="block text-sm font-semibold text-ink-soft mb-1">
           {config.etiquetaTelefono || 'Tu WhatsApp'}
         </label>
-        <TelefonoInput value={telefono} onChange={setTelefono} required />
+        <TelefonoInput value={telefono} onChange={setTelefono} pais={telefonoPais} onChangePais={setTelefonoPais} required />
       </div>
 
       {config.opcionesInteres && (

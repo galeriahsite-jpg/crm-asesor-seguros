@@ -1,6 +1,14 @@
 # DESPLIEGUE FINAL · LUMO — Paso a paso completo
 Orden exacto para dejar TODO corriendo: VS Code → GitHub → Vercel → Supabase → n8n → pruebas.
 
+> **ACTUALIZACIÓN (teléfonos MX/US):** este despliegue ahora incluye además:
+> validación estructural por país (primer dígito 2-9, anti-basura: rechaza
+> 0008992229, 9999999999, secuencias), selector de país 🇲🇽+52 / 🇺🇸+1 en todos
+> los formularios de teléfono (el WhatsApp usa el prefijo correcto), y la ruta
+> `/api/verificar-telefono` que se activa sola cuando pongas credenciales de
+> Twilio Lookup en Vercel (sin credenciales no verifica y no estorba).
+> Se agrega UN SQL más al Paso 4 (el #3).
+
 ---
 
 ## PASO 1 · VS Code / Terminal — subir el código
@@ -40,6 +48,8 @@ Dashboard → SQL Editor → New query. Pega y corre UNO por uno:
 2. **`supabase/trigger_normalizar_telefono_clientes.sql`** — agrega la columna
    `telefono_normalizado` a clientes + su trigger gemelo (sin índice único:
    dos clientes legítimos pueden compartir teléfono).
+3. **`supabase/pais_telefono_migracion.sql`** — agrega `telefono_pais` (MX/US)
+   a prospectos y clientes; los números existentes quedan como MX.
 
 Verificación rápida (opcional):
 ```sql
@@ -67,6 +77,15 @@ Recuerda: n8n corre en tu Mac — necesita Docker encendido para procesar.
 Tu lead de prueba "Prueba Reparacion LUMO" sigue pendiente (`n8n_procesado`
 null): a los ~2 min de activar debe llegarte el WhatsApp y aparecer su
 oportunidad "Por diagnosticar" con cotizaciones en Ventas.
+
+## PASO 4b · (Opcional, cuando contrates Twilio) Verificación real
+Vercel → Settings → Environment Variables → agrega `TWILIO_ACCOUNT_SID` y
+`TWILIO_AUTH_TOKEN` → Redeploy. Desde ese momento, al capturar un prospecto
+con teléfono, LUMO consulta Twilio Lookup y si el número NO existe te
+pregunta "¿Guardar de todos modos?". Sin estas variables, todo funciona
+igual pero sin esa consulta. (WhatsApp API: cuando la tengas, su token se
+agregará igual; la confirmación con WhatsApp llega como estatus de entrega
+del primer mensaje del flujo autónomo, no como pre-verificación.)
 
 ## PASO 6 · Pruebas finales (5 minutos, en el sitio ya desplegado)
 1. **Poka-yoke:** abre `/solicitud` → en el campo WhatsApp intenta escribir

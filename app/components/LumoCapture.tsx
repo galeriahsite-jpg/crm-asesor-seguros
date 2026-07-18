@@ -10,9 +10,9 @@ import { usePathname } from 'next/navigation';
 import { supabase } from '../../supabaseClient';
 import { Icon } from './lumo';
 import { registrarActividad, sellarPrimerContacto, type TipoActividad } from '../lib/actividades';
-import { normalizarTelefonoMX } from '../lib/telefono';
+import { normalizarTelefonoMX, enlaceWhatsApp } from '../lib/telefono';
 
-type Persona = { id: string; nombre: string; tipo: 'prospecto' | 'cliente'; telefono?: string };
+type Persona = { id: string; nombre: string; tipo: 'prospecto' | 'cliente'; telefono?: string; telefono_pais?: string };
 
 type Accion = {
   tipo: string;
@@ -72,7 +72,7 @@ export default function LumoCapture() {
   const [acciones, setAcciones] = useState<AccionRevisada[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [grabando, setGrabando] = useState(false);
-  const [mensajesGenerados, setMensajesGenerados] = useState<{ nombre: string; mensaje: string; telefono?: string; prospectoId?: string; clienteId?: string }[]>([]);
+  const [mensajesGenerados, setMensajesGenerados] = useState<{ nombre: string; mensaje: string; telefono?: string; telefonoPais?: string; prospectoId?: string; clienteId?: string }[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null);
 
@@ -85,11 +85,11 @@ export default function LumoCapture() {
   if (RUTAS_PUBLICAS.some(r => pathname.startsWith(r))) return null;
 
   async function cargarPersonas(): Promise<Persona[]> {
-    const { data: pros } = await supabase.from('prospectos').select('id, nombre, telefono, estado').neq('estado', 'Convertido').neq('estado', 'Perdido');
-    const { data: cli } = await supabase.from('clientes').select('id, nombre, telefono');
+    const { data: pros } = await supabase.from('prospectos').select('id, nombre, telefono, telefono_pais, estado').neq('estado', 'Convertido').neq('estado', 'Perdido');
+    const { data: cli } = await supabase.from('clientes').select('id, nombre, telefono, telefono_pais');
     const lista: Persona[] = [
-      ...(pros || []).map(p => ({ id: p.id, nombre: p.nombre, tipo: 'prospecto' as const, telefono: p.telefono })),
-      ...(cli || []).map(c => ({ id: c.id, nombre: c.nombre, tipo: 'cliente' as const, telefono: c.telefono })),
+      ...(pros || []).map(p => ({ id: p.id, nombre: p.nombre, tipo: 'prospecto' as const, telefono: p.telefono, telefono_pais: p.telefono_pais })),
+      ...(cli || []).map(c => ({ id: c.id, nombre: c.nombre, tipo: 'cliente' as const, telefono: c.telefono, telefono_pais: c.telefono_pais })),
     ];
     setPersonas(lista);
     return lista;
@@ -184,7 +184,7 @@ export default function LumoCapture() {
     const seleccionadas = acciones.filter(a => a.incluida);
     const registroCreados = new Map<string, { id: string; tipo: 'prospecto' | 'cliente' }>();
     const resultados: AccionRevisada[] = [];
-    const mensajes: { nombre: string; mensaje: string; telefono?: string; prospectoId?: string; clienteId?: string }[] = [];
+    const mensajes: { nombre: string; mensaje: string; telefono?: string; telefonoPais?: string; prospectoId?: string; clienteId?: string }[] = [];
 
     const resolverPersona = (a: Accion): { id: string; tipo: 'prospecto' | 'cliente'; telefono?: string } | null => {
       if (a.persona_id) {
@@ -305,6 +305,7 @@ export default function LumoCapture() {
           const persona = resolverPersona(a);
           mensajes.push({
             nombre: a.persona_nombre, mensaje: d.mensaje || '', telefono: persona?.telefono,
+            telefonoPais: (persona as Persona | null)?.telefono_pais,
             prospectoId: persona?.tipo === 'prospecto' ? persona.id : undefined,
             clienteId: persona?.tipo === 'cliente' ? persona.id : undefined,
           });
@@ -491,7 +492,7 @@ export default function LumoCapture() {
                       >Copiar</button>
                       {m.telefono && (
                         <a
-                          href={`https://wa.me/${m.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + m.telefono.replace(/[^0-9]/g, '') : m.telefono.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(m.mensaje)}`}
+                          href={enlaceWhatsApp(m.telefono, m.telefonoPais, m.mensaje)}
                           target="_blank" rel="noopener noreferrer"
                           onClick={() => {
                             void registrarActividad({

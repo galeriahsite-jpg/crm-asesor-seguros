@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
-import { validarTelefonoOpcional } from '../lib/telefono';
+import { validarTelefonoOpcional, enlaceWhatsApp, type PaisTelefono } from '../lib/telefono';
 import TelefonoInput from '../components/TelefonoInput';
 
 type Poliza = {
@@ -20,6 +20,7 @@ type Cliente = {
   id: string;
   nombre: string;
   telefono: string;
+  telefono_pais?: string;
   estado: string;
   polizas: Poliza[];
 };
@@ -27,6 +28,7 @@ type Cliente = {
 export default function Clientes() {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoPais, setTelefonoPais] = useState<PaisTelefono>('MX');
   const [clientes, setClientes] = useState<Cliente[]>([]);
 
   const [clienteSeleccionado, setClienteSeleccionado] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function Clientes() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState('');
   const [editTelefono, setEditTelefono] = useState('');
+  const [editTelefonoPais, setEditTelefonoPais] = useState<PaisTelefono>('MX');
 
   useEffect(() => {
     cargarClientes();
@@ -56,12 +59,12 @@ export default function Clientes() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Teléfono opcional; si viene, debe ser un número MX válido.
-    const tel = validarTelefonoOpcional(telefono);
+    // Teléfono opcional; si viene, debe cumplir la estructura del país.
+    const tel = validarTelefonoOpcional(telefono, telefonoPais);
     if (!tel.ok) { alert(tel.error); return; }
 
     const { data: nuevo, error } = await supabase.from('clientes')
-      .insert([{ nombre, telefono: tel.telefono, estado: 'Activo', user_id: user.id }])
+      .insert([{ nombre, telefono: tel.telefono, telefono_pais: tel.telefono ? telefonoPais : null, estado: 'Activo', user_id: user.id }])
       .select().single();
     if (error) {
       alert('Error al guardar cliente: ' + error.message);
@@ -88,17 +91,18 @@ export default function Clientes() {
   function iniciarEdicion(c: Cliente) {
     setEditandoId(c.id);
     setEditNombre(c.nombre);
-    setEditTelefono(c.telefono);
+    setEditTelefono(c.telefono || '');
+    setEditTelefonoPais((c.telefono_pais === 'US' ? 'US' : 'MX'));
   }
 
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
-    const tel = validarTelefonoOpcional(editTelefono);
+    const tel = validarTelefonoOpcional(editTelefono, editTelefonoPais);
     if (!tel.ok) { alert(tel.error); return; }
 
     const { error } = await supabase
       .from('clientes')
-      .update({ nombre: editNombre, telefono: tel.telefono })
+      .update({ nombre: editNombre, telefono: tel.telefono, telefono_pais: tel.telefono ? editTelefonoPais : null })
       .eq('id', id);
 
     if (error) {
@@ -177,7 +181,7 @@ export default function Clientes() {
               required
               className="lumo-input"
             />
-            <TelefonoInput value={telefono} onChange={setTelefono} placeholder="Teléfono (10 dígitos, opcional)" />
+            <TelefonoInput value={telefono} onChange={setTelefono} pais={telefonoPais} onChangePais={setTelefonoPais} placeholder="Teléfono (10 dígitos, opcional)" />
           </div>
           <button type="submit" className="w-full lumo-btn-primary py-3">
             Crear Cliente
@@ -204,7 +208,7 @@ export default function Clientes() {
               {editandoId === c.id ? (
                 <form onSubmit={(e) => guardarEdicion(e, c.id)} className="space-y-3">
                   <input type="text" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="lumo-input p-2" />
-                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} className="lumo-input p-2" />
+                  <TelefonoInput value={editTelefono} onChange={setEditTelefono} pais={editTelefonoPais} onChangePais={setEditTelefonoPais} className="lumo-input p-2" />
                   <div className="flex gap-2">
                     <button type="submit" className="flex-1 lumo-btn-primary py-2 text-sm">Guardar Cambios</button>
                     <button type="button" onClick={() => setEditandoId(null)} className="flex-1 lumo-btn-ghost py-2 text-sm">Cancelar</button>
@@ -225,7 +229,7 @@ export default function Clientes() {
                         </span>
                         {c.telefono && (
                                                 <a 
-                        href={`https://wa.me/${c.telefono.replace(/[^0-9]/g, '').length === 10 ? '52' + c.telefono.replace(/[^0-9]/g, '') : c.telefono.replace(/[^0-9]/g, '')}`} 
+                        href={enlaceWhatsApp(c.telefono, c.telefono_pais)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-green-500 hover:text-green-400 text-xs bg-green-950/50 px-2 py-1 rounded-md border border-green-900"
