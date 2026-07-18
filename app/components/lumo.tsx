@@ -11,7 +11,7 @@ export type IconName =
   | 'bell' | 'phone' | 'edit' | 'trash' | 'search'
   | 'arrow' | 'chart' | 'folder' | 'settings' | 'alert'
   | 'check' | 'note' | 'shield' | 'rocket' | 'refresh'
-  | 'doc' | 'heart' | 'star' | 'logout' | 'plus';
+  | 'doc' | 'heart' | 'star' | 'logout' | 'plus' | 'mic' | 'stop';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   hoy: (<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" /></>),
@@ -38,6 +38,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   heart: (<path d="M12 20s-7.5-4.5-7.5-10A4.2 4.2 0 0 1 12 7.3 4.2 4.2 0 0 1 19.5 10c0 5.5-7.5 10-7.5 10z" />),
   star: (<path d="M12 4l2.4 5 5.6.7-4.1 3.8 1.1 5.5-5-2.8-5 2.8 1.1-5.5L4 9.7 9.6 9z" />),
   logout: (<><path d="M14 4H6a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 6 20h8" /><path d="M10 12h10M16.5 8l3.5 4-3.5 4" /></>),
+  mic: (<><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5M9 20.5h6" /></>),
+  stop: (<rect x="7" y="7" width="10" height="10" rx="1.5" />),
   plus: (<path d="M12 5v14M5 12h14" />),
 };
 
@@ -71,7 +73,7 @@ const NAV_ITEMS: { href: string; icon: IconName; label: string }[] = [
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/95 backdrop-blur-md border-t border-ink/10 flex justify-around items-center h-20 z-20 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md lg:max-w-xl mx-auto bg-card/95 backdrop-blur-md border-t border-ink/10 flex justify-around items-center h-20 z-20 px-2 pb-[env(safe-area-inset-bottom)] box-content">
       {NAV_ITEMS.map((item) => {
         const activo = item.href === '/'
           ? pathname === '/'
@@ -85,7 +87,7 @@ export function BottomNav() {
             }`}
           >
             <Icon name={item.icon} size={22} strokeWidth={activo ? 2.2 : 1.8} className="mb-1" />
-            <span className={`text-[10px] ${activo ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+            <span className={`text-xs ${activo ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
           </Link>
         );
       })}
@@ -108,14 +110,14 @@ export function FlujoProceso({ paso, texto }: { paso: number; texto: string }) {
       <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
         {ETAPAS_PROCESO.map((e, i) => (
           <span key={e} className="flex items-center gap-1 shrink-0">
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-md tracking-wide ${
+            <span className={`text-xs font-bold px-2 py-1 rounded-md tracking-wide ${
               i === paso
                 ? 'bg-azul text-white'
                 : i < paso
                   ? 'bg-azul-soft text-azul'
                   : 'bg-card text-ink-faint border border-ink/10'
             }`}>{i + 1} {e}</span>
-            {i < ETAPAS_PROCESO.length - 1 && <span className="text-ink-faint text-[10px]">→</span>}
+            {i < ETAPAS_PROCESO.length - 1 && <span className="text-ink-faint text-xs">→</span>}
           </span>
         ))}
       </div>
@@ -139,5 +141,37 @@ export function PageHeader({ titulo, subtitulo, children }: {
       </div>
       {children && <div className="flex gap-2 items-center pb-1">{children}</div>}
     </header>
+  );
+}
+
+/* ============================================================
+   LUMO · Skeleton de carga (forma antes que texto)
+   ============================================================ */
+
+export function SkeletonCard({ lineas = 2 }: { lineas?: number }) {
+  return (
+    <div className="lumo-card p-4 animate-pulse space-y-2.5">
+      <div className="h-4 bg-ink/10 rounded w-2/5"></div>
+      {Array.from({ length: lineas }).map((_, i) => (
+        <div key={i} className="h-3 bg-ink/10 rounded" style={{ width: `${85 - i * 18}%` }}></div>
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonPantalla({ titulo }: { titulo?: string }) {
+  return (
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
+      <div className="px-6 pt-10 pb-5">
+        <div className="h-4 bg-ink/10 rounded w-28 mb-2 animate-pulse"></div>
+        <div className="h-9 bg-ink/10 rounded w-44 animate-pulse"></div>
+        {titulo && <span className="sr-only">{titulo}</span>}
+      </div>
+      <div className="p-6 space-y-4">
+        <SkeletonCard lineas={3} />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    </div>
   );
 }

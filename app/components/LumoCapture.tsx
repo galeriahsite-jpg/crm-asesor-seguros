@@ -11,6 +11,7 @@ import { supabase } from '../../supabaseClient';
 import { Icon } from './lumo';
 import { registrarActividad, sellarPrimerContacto, type TipoActividad } from '../lib/actividades';
 import { normalizarTelefonoMX, enlaceWhatsApp } from '../lib/telefono';
+import { avisarDatosActualizados } from './Notificaciones';
 
 type Persona = { id: string; nombre: string; tipo: 'prospecto' | 'cliente'; telefono?: string; telefono_pais?: string };
 
@@ -510,7 +511,7 @@ export default function LumoCapture() {
                   </div>
                 ))}
 
-                <button onClick={() => { setAbierto(false); window.location.reload(); }} className="w-full lumo-btn-primary py-3">
+                <button onClick={() => { setAbierto(false); avisarDatosActualizados(); }} className="w-full lumo-btn-primary py-3">
                   Terminar
                 </button>
                 <p className="font-hand text-base text-ink-faint text-center">todo quedó registrado en tu historial</p>

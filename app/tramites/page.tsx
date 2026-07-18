@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Tramite = {
   id: string;
@@ -52,7 +53,7 @@ export default function Tramites() {
   async function guardarTramite(e: React.FormEvent) {
     e.preventDefault();
     if (!personaSeleccionada) {
-      alert('Debes seleccionar un prospecto o cliente para iniciar el trámite.');
+      toast('Debes seleccionar un prospecto o cliente para iniciar el trámite.');
       return;
     }
 
@@ -71,7 +72,7 @@ export default function Tramites() {
     }]);
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast('Error al guardar: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'tramite_creado',
@@ -85,14 +86,15 @@ export default function Tramites() {
   }
 
   async function eliminarTramite(id: string) {
+    if (!(await confirmarLumo({ mensaje: '¿Eliminar este trámite?', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('tramites').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarTramites();
   }
 
   async function cambiarEstadoTramite(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('tramites').update({ estado: nuevoEstado }).eq('id', id);
-    if (error) alert('Error al actualizar');
+    if (error) toast('Error al actualizar');
     else cargarTramites();
   }
 
@@ -105,7 +107,7 @@ export default function Tramites() {
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
     const { error } = await supabase.from('tramites').update({ folio: editFolio, nota: editNota }).eq('id', id);
-    if (error) alert('Error al guardar');
+    if (error) toast('Error al guardar');
     else { setEditandoId(null); cargarTramites(); }
   }
 
@@ -114,7 +116,7 @@ export default function Tramites() {
   );
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">seguimiento aseguradoras</p>
@@ -204,8 +206,8 @@ export default function Tramites() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(t)} className="text-ink-faint hover:text-azul p-1" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarTramite(t.id)} className="text-ink-faint hover:text-rojo p-1" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(t)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarTramite(t.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">

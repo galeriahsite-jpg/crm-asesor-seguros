@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { toast, confirmarLumo } from '../components/Notificaciones';
+import { formatearFecha } from '../lib/fechas';
 
 type Cita = {
   id: string;
@@ -35,6 +37,14 @@ export default function Agenda() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // LumoCapture/Dictado avisan cuando crean datos: refrescar sin recargar.
+  useEffect(() => {
+    const refrescar = () => cargarCitas();
+    window.addEventListener('lumo:datos-actualizados', refrescar);
+    return () => window.removeEventListener('lumo:datos-actualizados', refrescar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargarCitas() {
     const { data } = await supabase.from('citas').select('*').order('fecha', { ascending: true });
     if (data) setCitas(data as Cita[]);
@@ -51,7 +61,7 @@ export default function Agenda() {
   async function guardarCita(e: React.FormEvent) {
     e.preventDefault();
     if (!personaSeleccionada) {
-      alert('Debes seleccionar un prospecto o cliente para agendar la cita.');
+      toast('Debes seleccionar un prospecto o cliente para agendar la cita.');
       return;
     }
 
@@ -70,7 +80,7 @@ export default function Agenda() {
     }]);
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast('Error al guardar: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'cita_creada',
@@ -85,14 +95,15 @@ export default function Agenda() {
   }
 
   async function eliminarCita(id: string) {
+    if (!(await confirmarLumo({ titulo: 'Eliminar cita', mensaje: 'Esta acción no se puede deshacer.', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('citas').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarCitas();
   }
 
   async function cambiarEstadoCita(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('citas').update({ estado: nuevoEstado }).eq('id', id);
-    if (error) alert('Error al actualizar');
+    if (error) toast('Error al actualizar');
     else {
       const cita = citas.find(c => c.id === id);
       if (nuevoEstado !== 'Pendiente') {
@@ -115,7 +126,7 @@ export default function Agenda() {
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
     const { error } = await supabase.from('citas').update({ fecha: editFecha, hora: editHora, tipo: editTipo }).eq('id', id);
-    if (error) alert('Error al guardar');
+    if (error) toast('Error al guardar');
     else { setEditandoId(null); cargarCitas(); }
   }
 
@@ -153,7 +164,7 @@ export default function Agenda() {
   ];
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <PageHeader titulo="Agenda" subtitulo="citas y compromisos">
         <button
           onClick={() => setMostrarForm(!mostrarForm)}
@@ -266,13 +277,13 @@ export default function Agenda() {
                     <div className="flex-1">
                       <p className="font-bold text-ink">{c.titulo}</p>
                       <p className="text-sm text-ink-soft mt-1 flex items-center gap-1.5">
-                        <Icon name="calendar" size={14} /> {c.fecha} a las {c.hora}
+                        <Icon name="calendar" size={14} /> {formatearFecha(c.fecha)} a las {c.hora}
                       </p>
                       <span className="lumo-chip lumo-chip-azul mt-2">{c.tipo}</span>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(c)} className="text-ink-faint hover:text-azul p-1" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarCita(c.id)} className="text-ink-faint hover:text-rojo p-1" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(c)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarCita(c.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">

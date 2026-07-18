@@ -13,6 +13,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Cotizacion = {
   id: string;
@@ -58,6 +59,13 @@ export default function Ventas() {
     cargarPersonas();
   }, []);
 
+  // LumoCapture avisa cuando crea datos: refrescar sin recargar.
+  useEffect(() => {
+    const refrescar = () => cargarOportunidades();
+    window.addEventListener('lumo:datos-actualizados', refrescar);
+    return () => window.removeEventListener('lumo:datos-actualizados', refrescar);
+  }, []);
+
   async function cargarOportunidades() {
     const { data } = await supabase
       .from('oportunidades')
@@ -82,7 +90,7 @@ export default function Ventas() {
   async function guardarOportunidad(e: React.FormEvent) {
     e.preventDefault();
     if (!personaSeleccionada) {
-      alert('Por favor selecciona un prospecto o cliente de la lista.');
+      toast('Por favor selecciona un prospecto o cliente de la lista.');
       return;
     }
 
@@ -102,7 +110,7 @@ export default function Ventas() {
     }]).select().single();
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast('Error al guardar: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'oportunidad_creada',
@@ -118,15 +126,15 @@ export default function Ventas() {
   }
 
   async function eliminarOportunidad(id: string) {
-    if (!confirm('¿Eliminar esta oportunidad y sus cotizaciones?')) return;
+    if (!(await confirmarLumo({ titulo: 'Eliminar oportunidad', mensaje: 'Se eliminará esta oportunidad y todas sus cotizaciones.', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('oportunidades').delete().eq('id', id);
-    if (error) alert('Error al eliminar: ' + error.message);
+    if (error) toast('Error al eliminar: ' + error.message);
     else cargarOportunidades();
   }
 
   async function cambiarEstadoOportunidad(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('oportunidades').update({ estado: nuevoEstado }).eq('id', id);
-    if (error) alert('Error al actualizar');
+    if (error) toast('Error al actualizar');
     else cargarOportunidades();
   }
 
@@ -146,7 +154,7 @@ export default function Ventas() {
     }]);
 
     if (error) {
-      alert('Error al agregar cotización: ' + error.message);
+      toast('Error al agregar cotización: ' + error.message);
     } else {
       const op = oportunidades.find(o => o.id === oportunidadId);
       void registrarActividad({
@@ -164,7 +172,7 @@ export default function Ventas() {
 
   async function cambiarEstadoCotizacion(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('cotizaciones').update({ estado: nuevoEstado }).eq('id', id);
-    if (error) alert('Error al actualizar');
+    if (error) toast('Error al actualizar');
     else cargarOportunidades();
   }
 
@@ -175,14 +183,15 @@ export default function Ventas() {
     if (editCotPrima && cot.estado === 'Pendiente') cambios.estado = 'Cotizada';
 
     const { error } = await supabase.from('cotizaciones').update(cambios).eq('id', cot.id);
-    if (error) alert('Error al guardar la prima');
+    if (error) toast('Error al guardar la prima');
     setEditCotId(null);
     cargarOportunidades();
   }
 
   async function eliminarCotizacion(id: string) {
+    if (!(await confirmarLumo({ mensaje: '¿Eliminar esta cotización?', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('cotizaciones').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarOportunidades();
   }
 
@@ -207,7 +216,7 @@ export default function Ventas() {
     : '';
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">cotizaciones y embudo</p>
@@ -304,7 +313,7 @@ export default function Ventas() {
                     </p>
                   )}
                 </div>
-                <button onClick={() => eliminarOportunidad(o.id)} className="text-ink-faint hover:text-rojo p-1"><Icon name="trash" size={17} /></button>
+                <button onClick={() => eliminarOportunidad(o.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5"><Icon name="trash" size={17} /></button>
               </div>
 
               {/* Cotizaciones por aseguradora */}
@@ -334,7 +343,7 @@ export default function Ventas() {
                     <select
                       value={c.estado}
                       onChange={(e) => cambiarEstadoCotizacion(c.id, e.target.value)}
-                      className="text-[11px] border border-ink/15 rounded-md p-1 bg-card text-ink-soft"
+                      className="text-xs border border-ink/15 rounded-md p-1 bg-card text-ink-soft"
                     >
                       {ESTADOS_COTIZACION.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>

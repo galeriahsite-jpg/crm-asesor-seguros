@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon } from '../components/lumo';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Aseguradora = {
   id: string;
@@ -41,7 +42,7 @@ export default function Mas() {
     }]);
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast('Error al guardar: ' + error.message);
     } else {
       setPortalUrl(''); setUsuario(''); setEjecutivo(''); setTelefono('');
       cargarAseguradoras();
@@ -49,13 +50,14 @@ export default function Mas() {
   }
 
   async function eliminarAseguradora(id: string) {
+    if (!(await confirmarLumo({ mensaje: '¿Eliminar esta aseguradora del directorio?', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('aseguradoras').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarAseguradoras();
   }
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
 
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>

@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { BottomNav, Icon } from '../../components/lumo';
+import { BottomNav, Icon, SkeletonPantalla } from '../../components/lumo';
 import {
   registrarActividad, tiempoTranscurrido,
   ETIQUETAS_ACTIVIDAD, type Actividad,
 } from '../../lib/actividades';
-import { enlaceWhatsApp } from '../../lib/telefono';
+import { enlaceWhatsApp, formatearTelefono } from '../../lib/telefono';
+import { formatearFecha } from '../../lib/fechas';
+import { toast, confirmarLumo } from '../../components/Notificaciones';
 
 type Poliza = { id: string; producto: string; aseguradora: string; numero_poliza: string; vencimiento: string; estado: string };
 type Oportunidad = { id: string; producto: string; prima: string; estado: string };
@@ -92,7 +94,7 @@ export default function ExpedienteCliente() {
       estado: 'Activa',
       user_id: user.id
     }]);
-    if (error) alert('Error: ' + error.message);
+    if (error) toast('Error: ' + error.message);
     else {
       void registrarActividad({
         tipo: 'poliza_registrada',
@@ -117,7 +119,7 @@ export default function ExpedienteCliente() {
       cliente_id: clienteId,
       user_id: user.id
     }]);
-    if (error) alert('Error: ' + error.message);
+    if (error) toast('Error: ' + error.message);
     else {
       void registrarActividad({
         tipo: 'cita_creada',
@@ -141,7 +143,7 @@ export default function ExpedienteCliente() {
       cliente_id: clienteId,
       user_id: user.id
     }]);
-    if (error) alert('Error: ' + error.message);
+    if (error) toast('Error: ' + error.message);
     else {
       void registrarActividad({
         tipo: 'servicio_abierto',
@@ -152,10 +154,10 @@ export default function ExpedienteCliente() {
     }
   }
 
-  if (cargando) return <div className="min-h-screen flex items-center justify-center"><p className="font-hand text-xl text-ink-faint">cargando expediente...</p></div>;
+  if (cargando) return <SkeletonPantalla titulo="Expediente" />;
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">historial completo</p>
@@ -172,11 +174,11 @@ export default function ExpedienteCliente() {
             <div>
               <h2 className="text-xl font-bold text-ink">{cliente?.nombre}</h2>
               <p className="text-sm text-ink-soft mt-1 flex items-center gap-1.5">
-                <Icon name="phone" size={14} /> {cliente?.telefono || 'Sin teléfono'}
+                <Icon name="phone" size={14} /> {cliente?.telefono ? formatearTelefono(cliente.telefono) : 'Sin teléfono'}
               </p>
             </div>
             {cliente?.telefono && (
-              <a href={enlaceWhatsApp(cliente.telefono, cliente.telefono_pais)} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-400 text-xs bg-green-950/50 px-3 py-2 rounded-md border border-green-900">WhatsApp</a>            )}
+              <a href={enlaceWhatsApp(cliente.telefono, cliente.telefono_pais)} target="_blank" rel="noopener noreferrer" className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-md border border-verde/25 font-semibold hover:bg-verde hover:text-white transition-colors">WhatsApp</a>            )}
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -247,7 +249,7 @@ export default function ExpedienteCliente() {
                   <span className="text-ink-faint">{p.aseguradora}</span>
                 </div>
                 <p className="text-ink-soft text-xs mt-1">Póliza: {p.numero_poliza || 'N/A'}</p>
-                <p className="text-rojo text-xs mt-1 font-semibold">Vence: {p.vencimiento || 'N/A'}</p>
+                <p className="text-rojo text-xs mt-1 font-semibold">Vence: {formatearFecha(p.vencimiento)}</p>
               </div>
             ))}
             {polizas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin pólizas registradas</p>}

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BottomNav, Icon } from './components/lumo';
+import { BottomNav, Icon, SkeletonPantalla } from './components/lumo';
 import { registrarActividad, sellarPrimerContacto, tiempoTranscurrido } from './lib/actividades';
 
 export default function Home() {
@@ -40,6 +40,14 @@ export default function Home() {
         cargarResumen();
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // LumoCapture/Dictado avisan cuando crean datos: refrescar sin recargar.
+  useEffect(() => {
+    const refrescar = () => cargarResumen();
+    window.addEventListener('lumo:datos-actualizados', refrescar);
+    return () => window.removeEventListener('lumo:datos-actualizados', refrescar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -226,21 +234,10 @@ export default function Home() {
     setDecisiones(prev => prev.filter(x => x.clave !== d.clave));
   }
 
-  if (cargando) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-paper">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-azul rounded-xl flex items-center justify-center text-card">
-            <Icon name="hoy" size={26} />
-          </div>
-          <p className="text-ink-faint font-medium">Cargando tu sesión...</p>
-        </div>
-      </div>
-    );
-  }
+  if (cargando) return <SkeletonPantalla titulo="Hoy" />;
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto relative">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto relative">
 
       {/* Header LUMO */}
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
@@ -310,7 +307,7 @@ export default function Home() {
               {decisiones.map(d => (
                 <div key={d.clave} className={`lumo-card p-4 ${d.urgente ? 'border-l-4 border-l-rojo' : ''}`}>
                   {d.urgente && (
-                    <p className="text-rojo text-[10px] font-bold uppercase tracking-wider mb-1">⚡ Urgente · lead sin contactar</p>
+                    <p className="text-rojo text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Icon name="alert" size={12} /> Urgente · lead sin contactar</p>
                   )}
                   <p className="font-bold text-ink">{d.nombre}</p>
                   <p className="text-sm text-ink font-medium mt-0.5">{d.pregunta}</p>

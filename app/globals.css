@@ -11,7 +11,7 @@
   --color-card: #FFFDF8;
   --color-ink: #141414;
   --color-ink-soft: #57534A;
-  --color-ink-faint: #97917F;
+  --color-ink-faint: #837C6A;
   --color-linea: #E4DECF;
 
   --color-azul: #1F3FD8;
@@ -43,6 +43,60 @@ body {
 ::-webkit-scrollbar {
   width: 0px;
   background: transparent;
+}
+
+/* ── Sensación nativa: respuesta táctil inmediata ────────────
+   En móvil no existe hover; todo elemento presionable responde
+   al toque con una leve compresión, como en iOS. */
+button:active,
+a:active,
+.lumo-btn-primary:active,
+.lumo-btn-danger:active,
+.lumo-btn-ghost:active {
+  transform: scale(0.97);
+  transition: transform 0.06s ease-out;
+}
+select:active { transform: none; }
+
+/* Animaciones de toasts y sheets */
+@keyframes lumoToast {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lumoSheet {
+  from { transform: translateY(24px); opacity: 0.6; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Modo oscuro: "papel nocturno" ──────────────────────────
+   Mismo cuaderno, luz apagada. Respeta la preferencia del
+   sistema sin configuración extra. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #191713;
+    --color-card: #23201B;
+    --color-ink: #EDE9DE;
+    --color-ink-soft: #B5AF9F;
+    --color-ink-faint: #7E7868;
+    --color-linea: #35312A;
+    --color-azul: #6D87F5;
+    --color-azul-dark: #8CA0F7;
+    --color-azul-soft: #232A45;
+    --color-rojo: #F0655C;
+    --color-rojo-dark: #F4837B;
+    --color-rojo-soft: #3A2523;
+    --color-verde: #58B586;
+    --color-verde-soft: #1F3229;
+  }
+  body {
+    background-image: radial-gradient(rgba(237, 233, 222, 0.03) 1px, transparent 1px);
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #EDE9DE;
+    -webkit-box-shadow: 0 0 0px 1000px #23201B inset;
+  }
 }
 
 /* ── Anti-zoom en móvil ──────────────────────────────────────

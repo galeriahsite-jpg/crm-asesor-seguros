@@ -6,6 +6,7 @@ import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
 import { validarTelefonoOpcional, enlaceWhatsApp, type PaisTelefono } from '../lib/telefono';
 import TelefonoInput from '../components/TelefonoInput';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Poliza = {
   id: string;
@@ -49,6 +50,14 @@ export default function Clientes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // LumoCapture/Dictado avisan cuando crean datos: refrescar sin recargar.
+  useEffect(() => {
+    const refrescar = () => cargarClientes();
+    window.addEventListener('lumo:datos-actualizados', refrescar);
+    return () => window.removeEventListener('lumo:datos-actualizados', refrescar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('*, polizas(*)').order('created_at', { ascending: false });
     if (data) setClientes(data as Cliente[]);
@@ -61,13 +70,13 @@ export default function Clientes() {
 
     // Teléfono opcional; si viene, debe cumplir la estructura del país.
     const tel = validarTelefonoOpcional(telefono, telefonoPais);
-    if (!tel.ok) { alert(tel.error); return; }
+    if (!tel.ok) { toast(tel.error); return; }
 
     const { data: nuevo, error } = await supabase.from('clientes')
       .insert([{ nombre, telefono: tel.telefono, telefono_pais: tel.telefono ? telefonoPais : null, estado: 'Activo', user_id: user.id }])
       .select().single();
     if (error) {
-      alert('Error al guardar cliente: ' + error.message);
+      toast('Error al guardar cliente: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'cliente_creado',
@@ -80,9 +89,10 @@ export default function Clientes() {
   }
 
   async function eliminarCliente(id: string) {
+    if (!(await confirmarLumo({ titulo: 'Eliminar cliente', mensaje: 'Se eliminará el cliente y sus pólizas de referencia. Esta acción no se puede deshacer.', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('clientes').delete().eq('id', id);
     if (error) {
-      alert('Error al eliminar');
+      toast('Error al eliminar');
     } else {
       cargarClientes();
     }
@@ -98,7 +108,7 @@ export default function Clientes() {
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
     const tel = validarTelefonoOpcional(editTelefono, editTelefonoPais);
-    if (!tel.ok) { alert(tel.error); return; }
+    if (!tel.ok) { toast(tel.error); return; }
 
     const { error } = await supabase
       .from('clientes')
@@ -106,7 +116,7 @@ export default function Clientes() {
       .eq('id', id);
 
     if (error) {
-      alert('Error al guardar la edición');
+      toast('Error al guardar la edición');
     } else {
       setEditandoId(null);
       cargarClientes();
@@ -129,7 +139,7 @@ export default function Clientes() {
     }]);
 
     if (error) {
-      alert('Error al guardar póliza: ' + error.message);
+      toast('Error al guardar póliza: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'poliza_registrada',
@@ -148,7 +158,7 @@ export default function Clientes() {
   );
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
 
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
@@ -240,8 +250,8 @@ export default function Clientes() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(c)} className="text-ink-faint hover:text-azul p-1" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarCliente(c.id)} className="text-ink-faint hover:text-rojo p-1" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(c)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarCliente(c.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
 

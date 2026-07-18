@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { BottomNav, Icon } from '../../components/lumo';
+import { BottomNav, Icon, SkeletonPantalla } from '../../components/lumo';
 import {
   registrarActividad, sellarPrimerContacto, tiempoTranscurrido,
   ETIQUETAS_ACTIVIDAD, type Actividad,
 } from '../../lib/actividades';
-import { enlaceWhatsApp } from '../../lib/telefono';
+import { enlaceWhatsApp, formatearTelefono } from '../../lib/telefono';
+import { formatearFecha } from '../../lib/fechas';
+import { toast, confirmarLumo } from '../../components/Notificaciones';
 
 type Cita = { id: string; fecha: string; hora: string; tipo: string; estado: string };
 type Oportunidad = { id: string; producto: string; aseguradora: string; prima: string; estado: string };
@@ -176,7 +178,7 @@ export default function FichaProspecto() {
   async function guardarProximaAccion(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from('prospectos').update({ proxima_accion: nuevaAccion, fecha_proxima: nuevaFecha }).eq('id', prospectoId);
-    if (error) alert('Error al guardar la acción');
+    if (error) toast('Error al guardar la acción');
     else {
       void registrarActividad({
         tipo: 'proxima_accion_definida',
@@ -195,7 +197,7 @@ export default function FichaProspecto() {
     const { error } = await supabase.from('citas').insert([{
       titulo: prospecto.nombre, fecha: citaFecha, hora: citaHora, tipo: citaTipo, estado: 'Pendiente', prospecto_id: prospectoId, user_id: user.id
     }]);
-    if (error) alert('Error al agendar');
+    if (error) toast('Error al agendar');
     else {
       void registrarActividad({
         tipo: 'cita_creada',
@@ -225,7 +227,7 @@ export default function FichaProspecto() {
     }]);
 
     if (error) {
-      alert('Error al guardar diagnóstico: ' + error.message);
+      toast('Error al guardar diagnóstico: ' + error.message);
     } else {
       await supabase.from('prospectos').update({ proxima_accion: dProximaAccion, fecha_proxima: dFechaDecision }).eq('id', prospectoId);
       void registrarActividad({
@@ -249,7 +251,7 @@ export default function FichaProspecto() {
     const { data: op, error } = await supabase.from('oportunidades').insert([{
       cliente: prospecto.nombre, producto: oppProducto, estado: 'Cotizando', prospecto_id: prospectoId, user_id: user.id
     }]).select().single();
-    if (error) { alert('Error al guardar cotización'); return; }
+    if (error) { toast('Error al guardar cotización'); return; }
 
     const { error: errCot } = await supabase.from('cotizaciones').insert([{
       oportunidad_id: op.id,
@@ -258,7 +260,7 @@ export default function FichaProspecto() {
       estado: oppPrima ? 'Cotizada' : 'Pendiente',
       user_id: user.id,
     }]);
-    if (errCot) alert('Oportunidad creada, pero falló la cotización: ' + errCot.message);
+    if (errCot) toast('Oportunidad creada, pero falló la cotización: ' + errCot.message);
 
     void registrarActividad({
       tipo: 'oportunidad_creada',
@@ -272,7 +274,7 @@ export default function FichaProspecto() {
   async function convertirACliente() {
     if (!prospecto || convirtiendo) return; // guard anti doble-clic
     if (prospecto.cliente_id) {
-      alert('Este prospecto ya fue convertido en cliente anteriormente.');
+      toast('Este prospecto ya fue convertido en cliente anteriormente.');
       return;
     }
     setConvirtiendo(true);
@@ -291,15 +293,15 @@ export default function FichaProspecto() {
       const pista = detalle.includes('function') || detalle.includes('schema')
         ? '\n\nPista: parece que falta correr la migración en Supabase (reparacion_integral_20260718.sql).'
         : '';
-      alert('No se pudo convertir: ' + detalle + pista);
+      toast('No se pudo convertir: ' + detalle + pista);
       setConvirtiendo(false); // el botón queda disponible tras el fallo
     } else {
-      alert('🎉 ¡Venta Cerrada!\n\nCliente creado e historial migrado. Ahora te llevaré a su Expediente para registrar la póliza.');
+      toast('¡Venta cerrada! Cliente creado e historial migrado. Vamos a su expediente para registrar la póliza.', 'exito');
       router.push(`/clientes/${clienteId}?nuevaPoliza=true`); // solo navega tras éxito
     }
   }
 
-  if (cargando) return <div className="min-h-screen flex items-center justify-center"><p className="font-hand text-xl text-ink-faint">cargando ficha...</p></div>;
+  if (cargando) return <SkeletonPantalla titulo="Ficha" />;
 
   // ── Briefing automático (reglas explicables, sin costo de IA) ──
   const hoyStr = new Date().toISOString().split('T')[0];
@@ -326,7 +328,7 @@ export default function FichaProspecto() {
   const pasoActual = PASOS_PERSONA.findIndex(p => !p.hecho);
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">historial completo</p>
@@ -347,14 +349,14 @@ export default function FichaProspecto() {
           <div className="flex items-center gap-1 mb-3 flex-wrap">
             {PASOS_PERSONA.map((p, i) => (
               <span key={p.nombre} className="flex items-center gap-1">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+                <span className={`text-xs font-bold px-2 py-1 rounded-md ${
                   p.hecho ? 'bg-verde-soft text-verde'
                   : i === pasoActual ? 'bg-azul text-white'
                   : 'bg-card text-ink-faint border border-ink/10'
                 }`}>
                   {p.hecho ? '✓ ' : `${i + 1} `}{p.nombre}
                 </span>
-                {i < PASOS_PERSONA.length - 1 && <span className="text-ink-faint text-[10px]">→</span>}
+                {i < PASOS_PERSONA.length - 1 && <span className="text-ink-faint text-xs">→</span>}
               </span>
             ))}
           </div>
@@ -400,7 +402,7 @@ export default function FichaProspecto() {
           <span className="lumo-tape"></span>
           <h2 className="text-xl font-bold text-ink">{prospecto?.nombre}</h2>
           <p className="text-sm text-ink-soft mt-1 flex items-center gap-1.5">
-            <Icon name="phone" size={14} /> {prospecto?.telefono || 'Sin teléfono'}
+            <Icon name="phone" size={14} /> {prospecto?.telefono ? formatearTelefono(prospecto.telefono) : 'Sin teléfono'}
           </p>
           <p className="text-sm text-azul font-semibold mt-1">Interés: {prospecto?.producto || 'No especificado'}</p>
 
@@ -413,7 +415,7 @@ export default function FichaProspecto() {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             {prospecto?.telefono && (
-             <a href={enlaceWhatsApp(prospecto.telefono, prospecto.telefono_pais)} target="_blank" rel="noopener noreferrer" onClick={abrirWhatsAppFicha} className="text-center text-sm bg-green-600/20 text-green-400 border border-green-800 font-medium py-2 rounded-lg hover:bg-green-600/40">WhatsApp</a>
+             <a href={enlaceWhatsApp(prospecto.telefono, prospecto.telefono_pais)} target="_blank" rel="noopener noreferrer" onClick={abrirWhatsAppFicha} className="text-center text-sm bg-verde-soft text-verde border border-verde/25 font-semibold py-2 rounded-lg hover:bg-verde hover:text-white transition-colors">WhatsApp</a>
             )}
             <button onClick={() => { setMostrarFormCita(!mostrarFormCita); setMostrarFormDiag(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-azul-soft text-azul border border-azul/20 font-semibold py-2 rounded-lg hover:bg-azul hover:text-white transition-colors">Agendar Cita</button>
             <button onClick={() => { setMostrarFormDiag(!mostrarFormDiag); setMostrarFormCita(false); setMostrarFormOpp(false); }} className="text-center text-sm bg-paper text-ink border border-ink/15 font-semibold py-2 rounded-lg hover:bg-ink hover:text-white transition-colors">Diagnóstico</button>
@@ -525,7 +527,7 @@ export default function FichaProspecto() {
             <div>
               <p className="text-ink font-semibold">{prospecto.proxima_accion}</p>
               <p className="text-ink-soft text-sm mt-1 flex items-center gap-1.5">
-                <Icon name="calendar" size={14} /> {prospecto.fecha_proxima || 'Sin fecha'}
+                <Icon name="calendar" size={14} /> {formatearFecha(prospecto.fecha_proxima)}
               </p>
             </div>
           ) : (

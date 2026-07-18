@@ -7,6 +7,8 @@ import LumoDictado from '../components/LumoDictado';
 import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
 import { validarTelefonoOpcional, enlaceWhatsApp, verificarTelefonoReal, type PaisTelefono } from '../lib/telefono';
 import TelefonoInput from '../components/TelefonoInput';
+import { formatearTelefono } from '../lib/telefono';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Prospecto = {
   id: string;
@@ -43,6 +45,14 @@ export default function Prospectos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // LumoCapture/Dictado avisan cuando crean datos: refrescar sin recargar.
+  useEffect(() => {
+    const refrescar = () => cargarProspectos();
+    window.addEventListener('lumo:datos-actualizados', refrescar);
+    return () => window.removeEventListener('lumo:datos-actualizados', refrescar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargarProspectos() {
     // RLS se encarga de filtrar, solo traemos los que no están convertidos/perdidos
     const { data, error } = await supabase
@@ -61,11 +71,11 @@ export default function Prospectos() {
 
     // OBTENER EL ID DEL USUARIO ACTUAL
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { alert("Tu sesión ha expirado."); return; }
+    if (!user) { toast("Tu sesión ha expirado."); return; }
 
     // Teléfono opcional; si viene, debe cumplir la estructura del país.
     const tel = validarTelefonoOpcional(telefono, telefonoPais);
-    if (!tel.ok) { alert(tel.error); return; }
+    if (!tel.ok) { toast(tel.error); return; }
 
     // Verificación REAL (nivel 4): solo actúa si hay proveedor
     // configurado (Twilio); si no, devuelve null y no estorba.
@@ -73,7 +83,7 @@ export default function Prospectos() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const valido = await verificarTelefonoReal(tel.telefono, telefonoPais, session.access_token);
-        if (valido === false && !confirm('El verificador indica que este número NO parece válido.\n\n¿Guardar de todos modos?')) {
+        if (valido === false && !(await confirmarLumo({ titulo: 'Número no verificado', mensaje: 'El verificador indica que este número NO parece válido.', textoAceptar: 'Guardar igual' }))) {
           return;
         }
       }
@@ -90,7 +100,7 @@ export default function Prospectos() {
     }]).select().single();
 
     if (error) {
-      alert('Hubo un error al guardar');
+      toast('Hubo un error al guardar');
     } else {
       void registrarActividad({
         tipo: 'prospecto_creado',
@@ -104,9 +114,10 @@ export default function Prospectos() {
   }
 
   async function eliminarProspecto(id: string) {
+    if (!(await confirmarLumo({ titulo: 'Eliminar prospecto', mensaje: 'Esta acción no se puede deshacer.', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('prospectos').delete().eq('id', id);
     if (error) {
-      alert('Error al eliminar');
+      toast('Error al eliminar');
     } else {
       cargarProspectos();
     }
@@ -115,7 +126,7 @@ export default function Prospectos() {
   async function cambiarEstado(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('prospectos').update({ estado: nuevoEstado }).eq('id', id);
     if (error) {
-      alert('Error al actualizar');
+      toast('Error al actualizar');
     } else {
       void registrarActividad({
         tipo: 'etapa_cambiada',
@@ -138,7 +149,7 @@ export default function Prospectos() {
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
     const tel = validarTelefonoOpcional(editTelefono, editTelefonoPais);
-    if (!tel.ok) { alert(tel.error); return; }
+    if (!tel.ok) { toast(tel.error); return; }
 
     const { error } = await supabase
       .from('prospectos')
@@ -146,7 +157,7 @@ export default function Prospectos() {
       .eq('id', id);
 
     if (error) {
-      alert('Error al guardar la edición');
+      toast('Error al guardar la edición');
     } else {
       setEditandoId(null);
       cargarProspectos();
@@ -170,9 +181,9 @@ export default function Prospectos() {
       const pista = error.message.includes('function') || error.message.includes('schema')
         ? '\n\nPista: parece que falta correr la migración en Supabase (reparacion_integral_20260718.sql).'
         : '';
-      alert('No se pudo convertir: ' + error.message + pista);
+      toast('No se pudo convertir: ' + error.message + pista);
     } else {
-      alert('🎉 ¡Venta Directa Registrada!\n\nCliente creado en tu cartera. Te agendé automáticamente una revisión postventa para dentro de 15 días.');
+      toast('¡Venta directa registrada! Cliente creado; revisión postventa agendada en 15 días.', 'exito');
       cargarProspectos();
     }
   }
@@ -205,7 +216,7 @@ export default function Prospectos() {
   const otros = prospectosFiltrados.filter(p => !estadosConocidos.includes(p.estado));
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
 
       <PageHeader titulo="Prospectos" subtitulo="nuevas oportunidades activas">
         <button
@@ -326,7 +337,7 @@ export default function Prospectos() {
                       </Link>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-ink-soft flex items-center gap-1.5">
-                          <Icon name="phone" size={14} /> {p.telefono || 'Sin teléfono'}
+                          <Icon name="phone" size={14} /> {p.telefono ? formatearTelefono(p.telefono) : 'Sin teléfono'}
                         </span>
                         {p.telefono && (
                           <button onClick={() => abrirWhatsApp(p)} className="text-verde hover:text-verde text-xs bg-verde-soft px-2 py-1 rounded-md border border-verde/20 transition-colors font-semibold">WhatsApp</button>
@@ -335,8 +346,8 @@ export default function Prospectos() {
                       <p className="text-sm text-ink-soft mt-1">Interesado en: <span className="font-semibold text-ink">{p.producto || 'No especificado'}</span></p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(p)} className="text-ink-faint hover:text-azul p-1 transition-colors" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarProspecto(p.id)} className="text-ink-faint hover:text-rojo p-1 transition-colors" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(p)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5 transition-colors" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarProspecto(p.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5 transition-colors" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
 
@@ -371,6 +382,11 @@ export default function Prospectos() {
           {prospectosFiltrados.length === 0 && (
             <div className="lumo-card lumo-lines p-6 border-dashed text-center">
               <p className="font-hand text-xl text-ink-faint">no hay prospectos activos con esos criterios</p>
+              {prospectos.length === 0 && (
+                <button onClick={() => setMostrarForm(true)} className="lumo-btn-primary px-5 py-3 mt-4">
+                  Crear tu primer prospecto
+                </button>
+              )}
             </div>
           )}
         </div>

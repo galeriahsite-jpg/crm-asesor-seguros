@@ -107,7 +107,7 @@ export default function Metricas() {
   const convCitaPropuesta = totalCitas > 0 ? ((totalPropuestas / totalCitas) * 100).toFixed(1) : 0;
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
 
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
@@ -165,22 +165,22 @@ export default function Metricas() {
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
                 <p className="text-2xl font-bold text-ink">{leadsMes}</p>
-                <p className="text-[11px] text-ink-soft font-medium mt-1">Leads del mes</p>
+                <p className="text-xs text-ink-soft font-medium mt-1">Leads del mes</p>
               </div>
               <div>
                 <p className={`text-2xl font-bold ${pctEn5Min !== null && pctEn5Min >= 50 ? 'text-verde' : 'text-rojo'}`}>
                   {pctEn5Min !== null ? `${pctEn5Min}%` : '—'}
                 </p>
-                <p className="text-[11px] text-ink-soft font-medium mt-1">Contactados en 5 min</p>
+                <p className="text-xs text-ink-soft font-medium mt-1">Contactados en 5 min</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-ink">{promedioMin !== null ? `${promedioMin} min` : '—'}</p>
-                <p className="text-[11px] text-ink-soft font-medium mt-1">Promedio de respuesta</p>
+                <p className="text-xs text-ink-soft font-medium mt-1">Promedio de respuesta</p>
               </div>
             </div>
             {leadsSinContacto > 0 && (
               <p className="text-rojo text-xs font-semibold mt-4 bg-rojo-soft rounded-lg p-2 text-center">
-                ⚡ {leadsSinContacto} lead{leadsSinContacto === 1 ? '' : 's'} del mes {leadsSinContacto === 1 ? 'sigue' : 'siguen'} sin primer contacto
+                {leadsSinContacto} lead{leadsSinContacto === 1 ? '' : 's'} del mes {leadsSinContacto === 1 ? 'sigue' : 'siguen'} sin primer contacto
               </p>
             )}
             <p className="font-hand text-base text-ink-soft mt-3 text-center">responder en 5 minutos multiplica la conversión</p>

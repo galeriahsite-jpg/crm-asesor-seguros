@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Servicio = {
   id: string;
@@ -51,7 +52,7 @@ export default function Servicios() {
   async function guardarServicio(e: React.FormEvent) {
     e.preventDefault();
     if (!personaSeleccionada) {
-      alert('Debes seleccionar un prospecto o cliente.');
+      toast('Debes seleccionar un prospecto o cliente.');
       return;
     }
 
@@ -71,7 +72,7 @@ export default function Servicios() {
     }]);
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast('Error al guardar: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'servicio_abierto',
@@ -85,14 +86,15 @@ export default function Servicios() {
   }
 
   async function eliminarServicio(id: string) {
+    if (!(await confirmarLumo({ mensaje: '¿Eliminar este servicio?', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('servicios').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarServicios();
   }
 
   async function cambiarEstadoServicio(id: string, nuevoEstado: string) {
     const { error } = await supabase.from('servicios').update({ estado: nuevoEstado }).eq('id', id);
-    if (error) alert('Error al actualizar');
+    if (error) toast('Error al actualizar');
     else cargarServicios();
   }
 
@@ -106,7 +108,7 @@ export default function Servicios() {
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
     const { error } = await supabase.from('servicios').update({ tipo: editTipo, descripcion: editDescripcion, nota: editNota }).eq('id', id);
-    if (error) alert('Error al guardar la edición');
+    if (error) toast('Error al guardar la edición');
     else { setEditandoId(null); cargarServicios(); }
   }
 
@@ -115,7 +117,7 @@ export default function Servicios() {
   );
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">acompañamiento post-venta</p>
@@ -201,8 +203,8 @@ export default function Servicios() {
                       {s.nota && <p className="text-sm font-hand text-ink-soft mt-2 bg-paper p-2 rounded-lg border border-ink/10">{s.nota}</p>}
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(s)} className="text-ink-faint hover:text-azul p-1" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarServicio(s.id)} className="text-ink-faint hover:text-rojo p-1" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(s)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarServicio(s.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">

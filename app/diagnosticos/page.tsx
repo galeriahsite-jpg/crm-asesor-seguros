@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { toast, confirmarLumo } from '../components/Notificaciones';
 
 type Diagnostico = {
   id: string;
@@ -59,7 +60,7 @@ export default function Diagnosticos() {
   async function guardarDiagnostico(e: React.FormEvent) {
     e.preventDefault();
     if (!personaSeleccionada) {
-      alert('Debes seleccionar un prospecto o cliente.');
+      toast('Debes seleccionar un prospecto o cliente.');
       return;
     }
 
@@ -80,7 +81,7 @@ export default function Diagnosticos() {
     }]);
 
     if (error) {
-      alert('Error al guardar el diagnóstico: ' + error.message);
+      toast('Error al guardar el diagnóstico: ' + error.message);
     } else {
       void registrarActividad({
         tipo: 'diagnostico_creado',
@@ -94,8 +95,9 @@ export default function Diagnosticos() {
   }
 
   async function eliminarDiagnostico(id: string) {
+    if (!(await confirmarLumo({ mensaje: '¿Eliminar este diagnóstico?', textoAceptar: 'Eliminar', peligro: true }))) return;
     const { error } = await supabase.from('diagnosticos').delete().eq('id', id);
-    if (error) alert('Error al eliminar');
+    if (error) toast('Error al eliminar');
     else cargarDiagnosticos();
   }
 
@@ -124,7 +126,7 @@ export default function Diagnosticos() {
       .eq('id', id);
 
     if (error) {
-      alert('Error al guardar la edición');
+      toast('Error al guardar la edición');
     } else {
       setEditandoId(null);
       cargarDiagnosticos();
@@ -136,7 +138,7 @@ export default function Diagnosticos() {
   );
 
   return (
-    <div className="min-h-screen pb-28 max-w-md mx-auto">
+    <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">detección de necesidades</p>
@@ -248,8 +250,8 @@ export default function Diagnosticos() {
                       {d.nota && <p className="font-hand text-base text-ink-soft mt-2">&ldquo;{d.nota}&rdquo;</p>}
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => iniciarEdicion(d)} className="text-ink-faint hover:text-azul p-1" title="Editar"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarDiagnostico(d.id)} className="text-ink-faint hover:text-rojo p-1" title="Eliminar"><Icon name="trash" size={17} /></button>
+                      <button onClick={() => iniciarEdicion(d)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
+                      <button onClick={() => eliminarDiagnostico(d.id)} className="text-ink-faint hover:text-rojo p-2.5 -m-1.5" title="Eliminar"><Icon name="trash" size={17} /></button>
                     </div>
                   </div>
                 </>

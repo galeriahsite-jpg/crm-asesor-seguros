@@ -121,3 +121,11 @@ export async function verificarTelefonoReal(
     return null;
   }
 }
+
+/** Presentación legible: '8991700262' → '899 170 0262'.
+ *  Si no son 10 dígitos limpios, devuelve el valor tal cual. */
+export function formatearTelefono(telefono?: string | null): string {
+  const d = (telefono || '').replace(/\D/g, '');
+  if (d.length !== 10) return telefono || '';
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+}

@@ -1,8 +1,10 @@
 "use client";
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { Icon } from './lumo';
 import { registrarActividad } from '../lib/actividades';
 import { normalizarTelefonoMX } from '../lib/telefono';
+import { toast, avisarDatosActualizados } from './Notificaciones';
 
 export default function LumoDictado() {
   const [grabando, setGrabando] = useState(false);
@@ -28,7 +30,7 @@ export default function LumoDictado() {
         // La ruta es autenticada: enviamos el token de la sesión.
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          alert('Tu sesión ha expirado. Vuelve a iniciar sesión.');
+          toast('Tu sesión ha expirado. Vuelve a iniciar sesión.');
           setCargandoIA(false);
           return;
         }
@@ -45,7 +47,7 @@ export default function LumoDictado() {
 
         const data = await res.json();
         if (data.error) {
-          alert('Error: ' + data.error);
+          toast('Error: ' + data.error);
         } else {
           setTextoOriginal(data.texto);
           setDatos(data.datos);
@@ -57,7 +59,7 @@ export default function LumoDictado() {
       setMediaRecorder(recorder);
       setGrabando(true);
     } catch (error) {
-      alert('No se pudo acceder al micrófono. Revisa los permisos de tu navegador.');
+      toast('No se pudo acceder al micrófono. Revisa los permisos de tu navegador.');
     }
   };
 
@@ -89,18 +91,18 @@ export default function LumoDictado() {
     }]).select().single();
 
     if (error) {
-      alert('Error al guardar en la base de datos');
+      toast('Error al guardar en la base de datos');
     } else {
       void registrarActividad({
         tipo: 'prospecto_creado',
         descripcion: `${datos.nombre || 'Prospecto'} · vía dictado LUMO`,
         prospecto_id: nuevo?.id,
       });
-      alert('✅ Prospecto guardado y acción agendada por LUMO.');
+      toast('Prospecto guardado y acción agendada por LUMO.', 'exito');
       // Limpiar y recargar
       setDatos(null);
       setTextoOriginal('');
-      window.location.reload(); // Recarga para ver el nuevo prospecto en la lista
+      avisarDatosActualizados(); // La lista se refresca sola, sin recargar
     }
   };
 
@@ -112,7 +114,9 @@ export default function LumoDictado() {
         disabled={cargandoIA}
         className={`fixed bottom-24 right-4 z-50 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white transition-all ${grabando ? 'bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
       >
-        {cargandoIA ? '⏳' : grabando ? '⏹️' : '🎤'}
+        {cargandoIA
+          ? <span className="animate-pulse"><Icon name="refresh" size={24} /></span>
+          : grabando ? <Icon name="stop" size={24} /> : <Icon name="mic" size={24} />}
       </button>
 
       {/* Tarjeta de Confirmación (El Poka-Yoke) */}
@@ -132,9 +136,9 @@ export default function LumoDictado() {
               {datos.nota && <p><strong>Nota:</strong> {datos.nota}</p>}
               {datos.proxima_accion && (
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2">
-                  <p className="text-amber-800 font-bold text-sm">⚠️ Próxima Acción:</p>
+                  <p className="text-amber-800 font-bold text-sm">Próxima Acción:</p>
                   <p className="text-amber-700">{datos.proxima_accion}</p>
-                  {datos.fecha_proxima && <p className="text-amber-600 text-xs mt-1">📅 {datos.fecha_proxima}</p>}
+                  {datos.fecha_proxima && <p className="text-amber-600 text-xs mt-1">{datos.fecha_proxima}</p>}
                 </div>
               )}
             </div>
