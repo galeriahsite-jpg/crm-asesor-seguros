@@ -138,7 +138,7 @@ export default function Diagnosticos() {
         <Link href="/ventas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         <form onSubmit={guardarDiagnostico} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>

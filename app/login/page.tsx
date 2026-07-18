@@ -79,11 +79,8 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-ink-faint space-y-1">
-          <a href="#" className="hover:text-azul">¿Olvidaste tu contraseña?</a>
-          <p>·</p>
-          <a href="#" className="hover:text-azul">Aviso de privacidad</a>
-          <a href="#" className="hover:text-azul block">Soporte</a>
+        <div className="mt-6 text-center text-sm text-ink-faint">
+          <a href="/aviso-de-privacidad" target="_blank" rel="noopener noreferrer" className="hover:text-azul underline">Aviso de privacidad</a>
         </div>
 
       </div>

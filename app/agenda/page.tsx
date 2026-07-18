@@ -26,6 +26,7 @@ export default function Agenda() {
 
   const [personas, setPersonas] = useState<any[]>([]);
   const [personaSeleccionada, setPersonaSeleccionada] = useState<{id: string, tipo: string, nombre: string} | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   useEffect(() => {
     cargarCitas();
@@ -71,6 +72,7 @@ export default function Agenda() {
       alert('Error al guardar: ' + error.message);
     } else {
       setFecha(''); setHora(''); setTipo('Llamada'); setPersonaSeleccionada(null);
+      setMostrarForm(false);
       cargarCitas();
     }
   }
@@ -108,9 +110,17 @@ export default function Agenda() {
 
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
-      <PageHeader titulo="Agenda" subtitulo="citas y compromisos" />
+      <PageHeader titulo="Agenda" subtitulo="citas y compromisos">
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors ${mostrarForm ? 'bg-ink text-white' : 'lumo-btn-primary'}`}
+        >
+          <Icon name="plus" size={14} /> {mostrarForm ? 'Cerrar' : 'Nueva cita'}
+        </button>
+      </PageHeader>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
+        {mostrarForm && (
         <form onSubmit={guardarCita} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
@@ -118,41 +128,53 @@ export default function Agenda() {
           </h2>
           <div className="space-y-3">
 
-            <label className="block text-xs text-ink-soft font-semibold">Seleccionar Persona:</label>
-            <select
-              onChange={(e) => {
-                if (e.target.value === "") setPersonaSeleccionada(null);
-                else {
-                  const [id, tipo, ...nombreParts] = e.target.value.split('-');
-                  const nombre = nombreParts.join('-');
-                  setPersonaSeleccionada({ id, tipo, nombre });
-                }
-              }}
-              value={personaSeleccionada ? `${personaSeleccionada.id}-${personaSeleccionada.tipo}-${personaSeleccionada.nombre}` : ""}
-              required
-              className="lumo-input"
-            >
-              <option value="">-- Elige un Prospecto o Cliente --</option>
-              {personas.map(p => (
-                <option key={`${p.id}-${p.tipo}`} value={`${p.id}-${p.tipo}-${p.nombre}`}>
-                  {p.nombre} ({p.tipo})
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs text-ink-soft font-semibold mb-1">¿Con quién?</label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value === "") setPersonaSeleccionada(null);
+                  else {
+                    const [id, tipo, ...nombreParts] = e.target.value.split('-');
+                    const nombre = nombreParts.join('-');
+                    setPersonaSeleccionada({ id, tipo, nombre });
+                  }
+                }}
+                value={personaSeleccionada ? `${personaSeleccionada.id}-${personaSeleccionada.tipo}-${personaSeleccionada.nombre}` : ""}
+                required
+                className="lumo-input"
+              >
+                <option value="">-- Elige un Prospecto o Cliente --</option>
+                {personas.map(p => (
+                  <option key={`${p.id}-${p.tipo}`} value={`${p.id}-${p.tipo}-${p.nombre}`}>
+                    {p.nombre} ({p.tipo})
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="flex gap-2">
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="lumo-input w-1/2" />
-              <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} required className="lumo-input w-1/2" />
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Fecha</label>
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="lumo-input" />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Hora</label>
+                <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} required className="lumo-input" />
+              </div>
             </div>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="lumo-input">
-              <option>Llamada</option><option>Videollamada</option><option>Visita</option><option>Diagnóstico</option><option>Seguimiento</option><option>Servicio</option>
-            </select>
+            <div>
+              <label className="block text-xs text-ink-soft font-semibold mb-1">Tipo de cita</label>
+              <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="lumo-input">
+                <option>Llamada</option><option>Videollamada</option><option>Visita</option><option>Diagnóstico</option><option>Seguimiento</option><option>Servicio</option>
+              </select>
+            </div>
           </div>
           <button type="submit" className="w-full lumo-btn-primary py-3">Agregar a Agenda</button>
         </form>
+        )}
 
         <div className="mb-4">
-          <h2 className="lumo-section-title mb-3">Próximas Citas</h2>
+          <h2 className="lumo-section-title mb-3">Próximas Citas ({citasFiltradas.length})</h2>
           <div className="relative mb-3">
             <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input type="text" placeholder="Buscar cita..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="lumo-input pl-9" />
@@ -165,8 +187,14 @@ export default function Agenda() {
               {editandoId === c.id ? (
                 <form onSubmit={(e) => guardarEdicion(e, c.id)} className="space-y-3">
                   <div className="flex gap-2">
-                    <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)} className="lumo-input w-1/2 p-2" />
-                    <input type="time" value={editHora} onChange={(e) => setEditHora(e.target.value)} className="lumo-input w-1/2 p-2" />
+                    <div className="w-1/2">
+                      <label className="block text-xs text-ink-soft font-semibold mb-1">Fecha</label>
+                      <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)} className="lumo-input p-2" />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="block text-xs text-ink-soft font-semibold mb-1">Hora</label>
+                      <input type="time" value={editHora} onChange={(e) => setEditHora(e.target.value)} className="lumo-input p-2" />
+                    </div>
                   </div>
                   <select value={editTipo} onChange={(e) => setEditTipo(e.target.value)} className="lumo-input p-2">
                     <option>Llamada</option><option>Videollamada</option><option>Visita</option><option>Diagnóstico</option><option>Seguimiento</option><option>Servicio</option>

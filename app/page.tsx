@@ -9,6 +9,7 @@ import { registrarActividad, sellarPrimerContacto, tiempoTranscurrido } from './
 export default function Home() {
   const router = useRouter();
   const [cargando, setCargando] = useState(true);
+  const [usuarioEmail, setUsuarioEmail] = useState('');
   const [totalProspectos, setTotalProspectos] = useState(0);
   const [totalRenovaciones, setTotalRenovaciones] = useState(0);
   const [totalLlamadas, setTotalLlamadas] = useState(0);
@@ -34,6 +35,7 @@ export default function Home() {
       if (!session) {
         router.push('/login');
       } else {
+        setUsuarioEmail(session.user?.email || '');
         setCargando(false);
         cargarResumen();
       }
@@ -246,6 +248,11 @@ export default function Home() {
           <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-xl mb-2" />
           <p className="font-hand text-lg text-ink-soft leading-none mb-1">tu espacio. tus ideas. tu día.</p>
           <h1 className="text-4xl font-bold text-ink tracking-tight">Hoy</h1>
+          {usuarioEmail && (
+            <p className="text-xs text-ink-soft mt-1 flex items-center gap-1">
+              <Icon name="user" size={12} /> {usuarioEmail}
+            </p>
+          )}
         </div>
         <div className="flex gap-2 pb-1">
           <Link href="/mas" className="lumo-btn-ghost text-xs px-3 py-2 flex items-center gap-1.5">
@@ -307,7 +314,7 @@ export default function Home() {
                   )}
                   <p className="font-bold text-ink">{d.nombre}</p>
                   <p className="text-sm text-ink font-medium mt-0.5">{d.pregunta}</p>
-                  <p className="font-hand text-base text-ink-soft mt-1">razón: {d.razon}</p>
+                  <p className="text-xs text-ink-soft mt-1">{d.razon}</p>
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {d.urgente && (
                       <Link href={d.href} className="lumo-btn-danger px-4 py-2 text-xs">Abrir ficha</Link>

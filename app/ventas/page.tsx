@@ -42,6 +42,7 @@ export default function Ventas() {
 
   const [personas, setPersonas] = useState<{ id: string; nombre: string; tipo: string }[]>([]);
   const [personaSeleccionada, setPersonaSeleccionada] = useState<{ id: string, tipo: string } | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   // Cotización nueva (por oportunidad)
   const [agregandoCotEn, setAgregandoCotEn] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function Ventas() {
         oportunidad_id: op?.id,
       });
       setPersonaSeleccionada(null);
+      setMostrarForm(false);
       cargarOportunidades();
     }
   }
@@ -204,13 +206,17 @@ export default function Ventas() {
           <Link href="/diagnosticos" className="text-xs text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold flex items-center gap-1.5">
             <Icon name="note" size={14} /> Diagnósticos
           </Link>
-          <Link href="/tramites" className="text-xs text-ink border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-paper font-semibold flex items-center gap-1.5">
-            <Icon name="doc" size={14} /> Trámites
-          </Link>
+          <button
+            onClick={() => setMostrarForm(!mostrarForm)}
+            className={`text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors ${mostrarForm ? 'bg-ink text-white' : 'lumo-btn-primary'}`}
+          >
+            <Icon name="plus" size={14} /> {mostrarForm ? 'Cerrar' : 'Nueva'}
+          </button>
         </div>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
+        {mostrarForm && (
         <form onSubmit={guardarOportunidad} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
@@ -248,9 +254,10 @@ export default function Ventas() {
           </div>
           <button type="submit" className="w-full lumo-btn-primary py-3">Crear Oportunidad</button>
         </form>
+        )}
 
         <div className="mb-4">
-          <h2 className="lumo-section-title mb-3">Mis Oportunidades</h2>
+          <h2 className="lumo-section-title mb-3">Mis Oportunidades ({opsFiltradas.length})</h2>
           <div className="relative mb-3">
             <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input type="text" placeholder="Buscar por cliente..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="lumo-input pl-9" />

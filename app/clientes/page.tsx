@@ -134,7 +134,7 @@ export default function Clientes() {
         </Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         <form onSubmit={guardarCliente} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>

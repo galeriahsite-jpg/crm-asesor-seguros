@@ -314,7 +314,7 @@ export default function FichaProspecto() {
         <Link href="/prospectos" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         {/* ── Briefing: el contexto en 20 segundos, antes de llamar ── */}
         <div className="lumo-card relative p-4 border-l-4 border-l-azul">
@@ -336,7 +336,7 @@ export default function FichaProspecto() {
               <p><span className="text-ink-faint">Pidió en la web:</span> {prospecto.nota_entrada_web.slice(0, 120)}</p>
             )}
           </div>
-          <p className="font-hand text-base text-azul mt-2">objetivo: {objetivoSugerido}</p>
+          <p className="text-sm font-bold text-azul mt-2">Objetivo: {objetivoSugerido}</p>
         </div>
 
         {/* ── Registro post-llamada de 1 toque ── */}
@@ -368,9 +368,9 @@ export default function FichaProspecto() {
           <p className="text-sm text-azul font-semibold mt-1">Interés: {prospecto?.producto || 'No especificado'}</p>
 
           {prospecto?.nota && (
-            <div className="mt-4 bg-paper lumo-lines p-3 rounded-lg border border-ink/10">
+            <div className="mt-4 bg-paper p-3 rounded-lg border border-ink/10">
               <p className="text-xs text-ink-faint uppercase mb-1 font-bold tracking-wide">Nota Inicial</p>
-              <p className="font-hand text-lg text-ink">&ldquo;{prospecto.nota}&rdquo;</p>
+              <p className="text-sm text-ink whitespace-pre-wrap">{prospecto.nota}</p>
             </div>
           )}
 
@@ -416,8 +416,14 @@ export default function FichaProspecto() {
           <form onSubmit={guardarCita} className="lumo-card p-4 border-azul/40 space-y-3">
             <h3 className="font-bold text-azul text-sm uppercase tracking-wide">Nueva Cita para {prospecto?.nombre}</h3>
             <div className="flex gap-2">
-              <input type="date" value={citaFecha} onChange={(e) => setCitaFecha(e.target.value)} required className="lumo-input w-1/2 p-2 text-sm" />
-              <input type="time" value={citaHora} onChange={(e) => setCitaHora(e.target.value)} required className="lumo-input w-1/2 p-2 text-sm" />
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Fecha</label>
+                <input type="date" value={citaFecha} onChange={(e) => setCitaFecha(e.target.value)} required className="lumo-input p-2 text-sm" />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Hora</label>
+                <input type="time" value={citaHora} onChange={(e) => setCitaHora(e.target.value)} required className="lumo-input p-2 text-sm" />
+              </div>
             </div>
             <select value={citaTipo} onChange={(e) => setCitaTipo(e.target.value)} className="lumo-input p-2 text-sm">
               <option>Llamada</option><option>Videollamada</option><option>Visita</option><option>Diagnóstico</option><option>Seguimiento</option>

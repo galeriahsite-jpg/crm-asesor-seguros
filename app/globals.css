@@ -45,6 +45,16 @@ body {
   background: transparent;
 }
 
+/* ── Anti-zoom en móvil ──────────────────────────────────────
+   iOS Safari hace zoom automático cuando un input tiene fuente
+   menor a 16px. Forzamos 16px en todos los campos en pantallas
+   móviles para eliminar los saltos al escribir. */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
@@ -87,6 +97,7 @@ input:-webkit-autofill:focus {
   /* Inputs */
   .lumo-input {
     width: 100%;
+    font-size: 1rem; /* ≥16px: evita el zoom automático de iOS */
     padding: 0.75rem;
     background-color: var(--color-card);
     border: 1px solid rgba(20, 20, 20, 0.15);

@@ -65,7 +65,7 @@ export default function Mas() {
         <Link href="/" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Inicio</Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         <Link href="/metricas" className="bg-azul p-4 rounded-2xl flex justify-between items-center hover:bg-azul-dark transition-colors shadow-sm">
           <div>

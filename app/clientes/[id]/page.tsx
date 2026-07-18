@@ -163,7 +163,7 @@ export default function ExpedienteCliente() {
         <Link href="/clientes" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         <div className="lumo-card relative p-5">
           <span className="lumo-tape"></span>
@@ -197,7 +197,10 @@ export default function ExpedienteCliente() {
               </select>
             </div>
             <input type="text" placeholder="No. de Póliza" value={pPoliza} onChange={(e) => setPPoliza(e.target.value)} className="lumo-input p-2 text-sm" />
-            <input type="date" value={pVencimiento} onChange={(e) => setPVencimiento(e.target.value)} required className="lumo-input p-2 text-sm" />
+            <div>
+              <label className="block text-xs text-ink-soft font-semibold mb-1">Fecha de vencimiento</label>
+              <input type="date" value={pVencimiento} onChange={(e) => setPVencimiento(e.target.value)} required className="lumo-input p-2 text-sm" />
+            </div>
             <button type="submit" className="w-full lumo-btn-primary py-2 text-sm">Guardar Póliza</button>
           </form>
         )}
@@ -206,8 +209,14 @@ export default function ExpedienteCliente() {
           <form onSubmit={guardarCita} className="lumo-card p-4 border-ink/30 space-y-3">
             <h3 className="font-bold text-ink text-sm uppercase tracking-wide">Agendar Cita</h3>
             <div className="flex gap-2">
-              <input type="date" value={cFecha} onChange={(e) => setCFecha(e.target.value)} required className="lumo-input w-1/2 p-2 text-sm" />
-              <input type="time" value={cHora} onChange={(e) => setCHora(e.target.value)} required className="lumo-input w-1/2 p-2 text-sm" />
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Fecha</label>
+                <input type="date" value={cFecha} onChange={(e) => setCFecha(e.target.value)} required className="lumo-input p-2 text-sm" />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-xs text-ink-soft font-semibold mb-1">Hora</label>
+                <input type="time" value={cHora} onChange={(e) => setCHora(e.target.value)} required className="lumo-input p-2 text-sm" />
+              </div>
             </div>
             <select value={cTipo} onChange={(e) => setCTipo(e.target.value)} className="lumo-input p-2 text-sm">
               <option>Seguimiento</option><option>Revisión de póliza</option><option>Renovación</option><option>Servicio</option><option>Videollamada</option>

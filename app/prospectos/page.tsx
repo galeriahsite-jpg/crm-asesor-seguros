@@ -24,6 +24,7 @@ export default function Prospectos() {
   const [nota, setNota] = useState('');
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
   const [busqueda, setBusqueda] = useState('');
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState('');
@@ -69,6 +70,7 @@ export default function Prospectos() {
       alert('Hubo un error al guardar');
     } else {
       setNombre(''); setTelefono(''); setProducto(''); setNota('');
+      setMostrarForm(false);
       cargarProspectos();
     }
   }
@@ -158,11 +160,19 @@ export default function Prospectos() {
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
 
-      <PageHeader titulo="Prospectos" subtitulo="nuevas oportunidades activas" />
+      <PageHeader titulo="Prospectos" subtitulo="nuevas oportunidades activas">
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-colors ${mostrarForm ? 'bg-ink text-white' : 'lumo-btn-primary'}`}
+        >
+          <Icon name="plus" size={14} /> {mostrarForm ? 'Cerrar' : 'Nuevo'}
+        </button>
+      </PageHeader>
 
       <main className="p-6 space-y-8">
 
-        {/* Formulario Captura Rápida */}
+        {/* Formulario Captura Rápida (plegable) */}
+        {mostrarForm && (
         <form onSubmit={guardarProspecto} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
@@ -208,10 +218,11 @@ export default function Prospectos() {
             Guardar Prospecto
           </button>
         </form>
+        )}
 
         {/* Barra de Búsqueda */}
         <div>
-          <h2 className="lumo-section-title mb-3 px-1">Registros Activos</h2>
+          <h2 className="lumo-section-title mb-3 px-1">Registros Activos ({prospectosFiltrados.length})</h2>
           <div className="relative mb-3">
             <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input

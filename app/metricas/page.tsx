@@ -119,7 +119,7 @@ export default function Metricas() {
         </Link>
       </header>
 
-      <main className="p-5 space-y-8">
+      <main className="p-6 space-y-8">
 
         {/* Sección de Producción */}
         <div>
