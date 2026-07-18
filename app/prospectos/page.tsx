@@ -114,47 +114,15 @@ export default function Prospectos() {
   }
 
   async function convertirACliente(p: Prospecto) {
-    // OBTENER EL ID DEL USUARIO ACTUAL PARA PASARLO AL NUEVO CLIENTE
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { alert("Tu sesión ha expirado."); return; }
+    // Conversión TRANSACCIONAL en el servidor (RPC): crea el cliente,
+    // migra citas/oportunidades/diagnósticos/trámites/servicios y sella
+    // el prospecto en una sola transacción. O todo, o nada.
+    const { error } = await supabase.rpc('convertir_prospecto_a_cliente', {
+      p_prospecto_id: p.id,
+    });
 
-    // 1. Creamos al cliente en la cartera con el user_id
-    const { data: nuevoCliente, error: errorInsert } = await supabase
-      .from('clientes')
-      .insert([{ nombre: p.nombre, telefono: p.telefono, estado: 'Activo', user_id: user.id }])
-      .select();
-
-    if (errorInsert || !nuevoCliente || nuevoCliente.length === 0) {
-      alert('Error al crear cliente: ' + errorInsert?.message);
-      return;
-    }
-
-    const clienteId = nuevoCliente[0].id;
-
-    // 2. Migramos el historial y nos aseguramos de que también tengan el user_id
-    await supabase.from('citas').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', p.id);
-    await supabase.from('oportunidades').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', p.id);
-    await supabase.from('diagnosticos').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', p.id);
-    await supabase.from('tramites').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', p.id);
-
-    // 3. Calculamos fecha de postventa
-    const en15Dias = new Date();
-    en15Dias.setDate(en15Dias.getDate() + 15);
-    const fechaPostventa = en15Dias.toISOString().split('T')[0];
-
-    // 4. Sellamos el prospecto como convertido
-    const { error: errorUpdate } = await supabase
-      .from('prospectos')
-      .update({
-        estado: 'Convertido',
-        cliente_id: clienteId,
-        proxima_accion: 'Llamar para revisión postventa y pedir referidos',
-        fecha_proxima: fechaPostventa
-      })
-      .eq('id', p.id);
-
-    if (errorUpdate) {
-      alert('Error al actualizar el prospecto');
+    if (error) {
+      alert('No se pudo convertir: ' + error.message);
     } else {
       alert('🎉 ¡Venta Directa Registrada!\n\nCliente creado en tu cartera. Te agendé automáticamente una revisión postventa para dentro de 15 días.');
       cargarProspectos();

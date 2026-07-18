@@ -1,33 +1,31 @@
 // ============================================================
 // LUMO · Generación de primer contacto (autenticada)
 //
-// Correcciones aplicadas (puntos 5–8 de la revisión):
 // - La ruta NO es pública: exige sesión activa de Supabase
 //   (token Bearer del asesor).
 // - El navegador envía ÚNICAMENTE { prospectoId }. El nombre y
 //   el interés se leen de la base con el token del asesor, así
-//   RLS garantiza que el prospecto le pertenece. Nadie puede
-//   generar mensajes con datos falsificados ni de prospectos
-//   ajenos.
+//   RLS garantiza que el prospecto le pertenece.
 // - Límite de uso por asesor (30 mensajes/hora).
-// - Validación de prospectoId (UUID), del cuerpo JSON y de la
-//   respuesta del modelo (vacía o desbordada se rechaza).
-// - Usa la Responses API de OpenAI (interfaz principal actual).
+// - Validación con Zod del cuerpo, y de la respuesta del modelo
+//   (vacía o desbordada se rechaza).
+// - Usa la Responses API de OpenAI.
+// - Registro de consumo en ai_usage (best effort).
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kbvbwuzhtsddqqacdfdb.supabase.co';
-// Clave pública (la misma del navegador); los permisos reales los da RLS + token.
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_KczKDg4rZwj7t2fYzRX7jQ_rdFUsV-_';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { z } from 'zod';
+import { autenticar, limitarUso, registrarUsoIA } from '../_lib/servidor';
 
 const LIMITE_POR_ASESOR = 30;      // mensajes por hora
 const VENTANA_SEGUNDOS = 3600;
 const MAX_SALIDA_CARACTERES = 700; // control de tamaño de salida
+
+const cuerpoSchema = z.object({
+  prospectoId: z.preprocess(
+    v => (typeof v === 'string' ? v.trim() : ''),
+    z.uuid({ error: 'prospectoId inválido.' })
+  ),
+});
 
 const PROMPT_SISTEMA = `Eres LUMO, un asistente de comunicación para un asesor de seguros en México.
 Redacta un único mensaje de primer contacto para WhatsApp.
@@ -55,53 +53,34 @@ export async function POST(request: Request) {
   }
 
   // ── 1. Sesión del asesor (obligatoria) ──
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token) {
-    return Response.json({ error: 'Sesión requerida.' }, { status: 401 });
-  }
+  const auth = await autenticar(request);
+  if (!auth.ok) return auth.respuesta;
+  const { user, supabaseUsuario } = auth;
 
-  // Cliente con el token del asesor: todas las consultas pasan por RLS.
-  const supabaseUsuario = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const { data: { user }, error: errUser } = await supabaseUsuario.auth.getUser(token);
-  if (errUser || !user) {
-    return Response.json({ error: 'Sesión inválida o expirada.' }, { status: 401 });
-  }
-
-  // ── 2. Cuerpo: solo { prospectoId } ──
-  let body: { prospectoId?: string };
+  // ── 2. Cuerpo: solo { prospectoId } (Zod) ──
+  let crudo: unknown;
   try {
-    body = await request.json();
+    crudo = await request.json();
   } catch {
     return Response.json({ error: 'Cuerpo inválido.' }, { status: 400 });
   }
-  const prospectoId = (body.prospectoId || '').trim();
-  if (!UUID_RE.test(prospectoId)) {
-    return Response.json({ error: 'prospectoId inválido.' }, { status: 400 });
+  const validado = cuerpoSchema.safeParse(crudo);
+  if (!validado.success) {
+    return Response.json(
+      { error: validado.error.issues[0]?.message || 'prospectoId inválido.' },
+      { status: 400 }
+    );
   }
+  const { prospectoId } = validado.data;
 
-  // ── 3. Límite por asesor (si hay service key; si no, se omite con aviso) ──
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (serviceKey) {
-    const admin = createClient(SUPABASE_URL, serviceKey, { auth: { persistSession: false } });
-    const { data: usos, error: errRl } = await admin.rpc('incrementar_rate_limit', {
-      p_clave: `ia:user:${user.id}`,
-      p_ventana_segundos: VENTANA_SEGUNDOS,
-    });
-    if (!errRl && (usos as number) > LIMITE_POR_ASESOR) {
-      return Response.json(
-        { error: `Alcanzaste el límite de ${LIMITE_POR_ASESOR} mensajes por hora.` },
-        { status: 429 }
-      );
-    }
-    if (errRl) console.error('generar-mensaje: rate limit no disponible', errRl);
-  } else {
-    console.warn('generar-mensaje: SUPABASE_SERVICE_ROLE_KEY ausente, sin límite por asesor');
-  }
+  // ── 3. Límite por asesor ──
+  const excedido = await limitarUso(
+    `ia:user:${user.id}`,
+    LIMITE_POR_ASESOR,
+    VENTANA_SEGUNDOS,
+    `Alcanzaste el límite de ${LIMITE_POR_ASESOR} mensajes por hora.`
+  );
+  if (excedido) return excedido;
 
   // ── 4. Leer el prospecto REAL con el token del asesor (RLS) ──
   const { data: prospecto, error: errProspecto } = await supabaseUsuario
@@ -122,6 +101,8 @@ export async function POST(request: Request) {
   }
 
   // ── 5. Generar con la Responses API ──
+  const modelo = process.env.LUMO_MODEL || 'gpt-4o-mini';
+  const inicio = Date.now();
   try {
     const res = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -130,7 +111,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: process.env.LUMO_MODEL || 'gpt-4o-mini',
+        model: modelo,
         max_output_tokens: 300,
         instructions: PROMPT_SISTEMA,
         input: `Nombre de la persona: ${nombre}\nInterés indicado: ${interes}`,
@@ -140,10 +121,24 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const detalle = await res.text();
       console.error('generar-mensaje: OpenAI error', res.status, detalle);
+      void registrarUsoIA({
+        user_id: user.id, route: 'generar-mensaje', model: modelo,
+        duration_ms: Date.now() - inicio, success: false,
+      });
       return Response.json({ error: 'El modelo no respondió. Intenta de nuevo.' }, { status: 502 });
     }
 
     const data = await res.json();
+
+    void registrarUsoIA({
+      user_id: user.id,
+      route: 'generar-mensaje',
+      model: modelo,
+      input_tokens: data?.usage?.input_tokens ?? null,
+      output_tokens: data?.usage?.output_tokens ?? null,
+      duration_ms: Date.now() - inicio,
+      success: true,
+    });
 
     // Responses API: texto en output_text (SDK) o en output[].content[].text (REST).
     let mensaje: string = typeof data.output_text === 'string' ? data.output_text : '';
@@ -170,6 +165,10 @@ export async function POST(request: Request) {
     return Response.json({ mensaje });
   } catch (err) {
     console.error('generar-mensaje: error de conexión', err);
+    void registrarUsoIA({
+      user_id: user.id, route: 'generar-mensaje', model: modelo,
+      duration_ms: Date.now() - inicio, success: false,
+    });
     return Response.json({ error: 'Error de conexión con el modelo.' }, { status: 502 });
   }
 }

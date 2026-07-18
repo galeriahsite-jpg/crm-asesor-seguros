@@ -1,40 +1,72 @@
 "use client";
+// ============================================================
+// LUMO · Ventas — Modelo nuevo (auditoría, sección 14):
+// UNA oportunidad por persona/producto; las alternativas por
+// aseguradora viven anidadas en `cotizaciones`. Así el pipeline
+// y las métricas cuentan intenciones reales, no filas por
+// aseguradora.
+// Las oportunidades viejas (con aseguradora/prima en la propia
+// fila) se muestran como "legado" y siguen siendo editables.
+// ============================================================
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon } from '../components/lumo';
 
+type Cotizacion = {
+  id: string;
+  aseguradora: string;
+  prima: string | null;
+  estado: string;
+};
+
 type Oportunidad = {
   id: string;
   cliente: string;
   producto: string;
-  aseguradora: string;
-  prima: string;
+  aseguradora: string | null; // legado
+  prima: string | null;       // legado
   estado: string;
+  cotizaciones: Cotizacion[];
 };
+
+const ASEGURADORAS = ['AXA', 'MetLife', 'Profuturo', 'GNP', 'HDI', 'ABA Seguros', 'Seguros Monterrey', 'Mapfre', 'Qualitas'];
+const ESTADOS_OPORTUNIDAD = ['Por diagnosticar', 'Cotizando', 'Propuesta presentada', 'Negociación', 'Aceptada', 'Trámite en aseguradora', 'Emitida', 'Ganada', 'Perdida'];
+const ESTADOS_COTIZACION = ['Pendiente', 'Cotizada', 'Presentada', 'Elegida', 'Descartada'];
 
 export default function Ventas() {
   const [producto, setProducto] = useState('Vida');
-  const [aseguradora, setAseguradora] = useState('AXA');
-  const [prima, setPrima] = useState('');
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([]);
   const [busqueda, setBusqueda] = useState('');
 
-  const [personas, setPersonas] = useState<any[]>([]);
-  const [personaSeleccionada, setPersonaSeleccionada] = useState<{id: string, tipo: string} | null>(null);
+  const [personas, setPersonas] = useState<{ id: string; nombre: string; tipo: string }[]>([]);
+  const [personaSeleccionada, setPersonaSeleccionada] = useState<{ id: string, tipo: string } | null>(null);
 
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [editPrima, setEditPrima] = useState('');
+  // Cotización nueva (por oportunidad)
+  const [agregandoCotEn, setAgregandoCotEn] = useState<string | null>(null);
+  const [cotAseguradora, setCotAseguradora] = useState('AXA');
+  const [cotPrima, setCotPrima] = useState('');
+
+  // Edición de prima de una cotización
+  const [editCotId, setEditCotId] = useState<string | null>(null);
+  const [editCotPrima, setEditCotPrima] = useState('');
 
   useEffect(() => {
     cargarOportunidades();
     cargarPersonas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function cargarOportunidades() {
-    const { data } = await supabase.from('oportunidades').select('*').order('created_at', { ascending: false });
-    if (data) setOportunidades(data as Oportunidad[]);
+    const { data } = await supabase
+      .from('oportunidades')
+      .select('*, cotizaciones(*)')
+      .order('created_at', { ascending: false });
+    if (data) {
+      setOportunidades((data as Oportunidad[]).map(o => ({
+        ...o,
+        cotizaciones: (o.cotizaciones || []).sort((a, b) => a.aseguradora.localeCompare(b.aseguradora)),
+      })));
+    }
   }
 
   async function cargarPersonas() {
@@ -61,9 +93,7 @@ export default function Ventas() {
     const { error } = await supabase.from('oportunidades').insert([{
       cliente: nombreCliente,
       producto,
-      aseguradora,
-      prima,
-      estado: 'Cotizando',
+      estado: 'Por diagnosticar',
       prospecto_id: personaSeleccionada.tipo === 'prospecto' ? personaSeleccionada.id : null,
       cliente_id: personaSeleccionada.tipo === 'cliente' ? personaSeleccionada.id : null,
       user_id: user.id
@@ -72,13 +102,13 @@ export default function Ventas() {
     if (error) {
       alert('Error al guardar: ' + error.message);
     } else {
-      setPrima('');
       setPersonaSeleccionada(null);
       cargarOportunidades();
     }
   }
 
   async function eliminarOportunidad(id: string) {
+    if (!confirm('¿Eliminar esta oportunidad y sus cotizaciones?')) return;
     const { error } = await supabase.from('oportunidades').delete().eq('id', id);
     if (error) alert('Error al eliminar: ' + error.message);
     else cargarOportunidades();
@@ -90,16 +120,62 @@ export default function Ventas() {
     else cargarOportunidades();
   }
 
-  async function guardarEdicion(e: React.FormEvent, id: string) {
+  // ── Cotizaciones ──
+
+  async function agregarCotizacion(e: React.FormEvent, oportunidadId: string) {
     e.preventDefault();
-    const { error } = await supabase.from('oportunidades').update({ prima: editPrima }).eq('id', id);
-    if (error) alert('Error al guardar la edición');
-    else { setEditandoId(null); cargarOportunidades(); }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('cotizaciones').insert([{
+      oportunidad_id: oportunidadId,
+      aseguradora: cotAseguradora,
+      prima: cotPrima || null,
+      estado: cotPrima ? 'Cotizada' : 'Pendiente',
+      user_id: user.id,
+    }]);
+
+    if (error) {
+      alert('Error al agregar cotización: ' + error.message);
+    } else {
+      setAgregandoCotEn(null);
+      setCotPrima('');
+      cargarOportunidades();
+    }
+  }
+
+  async function cambiarEstadoCotizacion(id: string, nuevoEstado: string) {
+    const { error } = await supabase.from('cotizaciones').update({ estado: nuevoEstado }).eq('id', id);
+    if (error) alert('Error al actualizar');
+    else cargarOportunidades();
+  }
+
+  async function guardarPrimaCotizacion(e: React.FormEvent, cot: Cotizacion) {
+    e.preventDefault();
+    // Si estaba Pendiente y ahora tiene prima, pasa sola a Cotizada.
+    const cambios: { prima: string | null; estado?: string } = { prima: editCotPrima || null };
+    if (editCotPrima && cot.estado === 'Pendiente') cambios.estado = 'Cotizada';
+
+    const { error } = await supabase.from('cotizaciones').update(cambios).eq('id', cot.id);
+    if (error) alert('Error al guardar la prima');
+    setEditCotId(null);
+    cargarOportunidades();
+  }
+
+  async function eliminarCotizacion(id: string) {
+    const { error } = await supabase.from('cotizaciones').delete().eq('id', id);
+    if (error) alert('Error al eliminar');
+    else cargarOportunidades();
   }
 
   const opsFiltradas = oportunidades.filter(o =>
     o.cliente?.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  const chipEstadoCot = (estado: string) =>
+    estado === 'Elegida' ? 'lumo-chip-azul'
+    : estado === 'Descartada' ? 'lumo-chip-negro'
+    : '';
 
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
@@ -122,8 +198,11 @@ export default function Ventas() {
         <form onSubmit={guardarOportunidad} className="lumo-card relative p-5 space-y-4">
           <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
-            <Icon name="ventas" size={18} className="text-azul" /> Registrar Cotización
+            <Icon name="ventas" size={18} className="text-azul" /> Nueva Oportunidad
           </h2>
+          <p className="font-hand text-base text-ink-soft -mt-2">
+            una oportunidad por persona; las aseguradoras se cotizan adentro.
+          </p>
           <div className="space-y-3">
 
             <label className="block text-xs text-ink-soft font-semibold">Seleccionar Persona:</label>
@@ -147,17 +226,11 @@ export default function Ventas() {
               ))}
             </select>
 
-            <div className="flex gap-2">
-              <select value={producto} onChange={(e) => setProducto(e.target.value)} className="lumo-input w-1/2">
-                <option>Vida</option><option>Gastos Médicos</option><option>Auto</option><option>Hogar</option><option>Retiro</option>
-              </select>
-              <select value={aseguradora} onChange={(e) => setAseguradora(e.target.value)} className="lumo-input w-1/2">
-                <option>AXA</option><option>MetLife</option><option>Profuturo</option><option>GNP</option><option>Seguros Monterrey</option><option>Mapfre</option><option>Qualitas</option>
-              </select>
-            </div>
-            <input type="text" placeholder="Prima anual (Ej: $12,000)" value={prima} onChange={(e) => setPrima(e.target.value)} className="lumo-input" />
+            <select value={producto} onChange={(e) => setProducto(e.target.value)} className="lumo-input">
+              <option>Vida</option><option>Gastos Médicos</option><option>Auto</option><option>Hogar</option><option>Retiro</option><option>Empresas</option>
+            </select>
           </div>
-          <button type="submit" className="w-full lumo-btn-primary py-3">Guardar Cotización</button>
+          <button type="submit" className="w-full lumo-btn-primary py-3">Crear Oportunidad</button>
         </form>
 
         <div className="mb-4">
@@ -171,41 +244,87 @@ export default function Ventas() {
         <div className="space-y-3">
           {opsFiltradas.map((o) => (
             <div key={o.id} className="lumo-card p-4">
-              {editandoId === o.id ? (
-                <form onSubmit={(e) => guardarEdicion(e, o.id)} className="space-y-3">
-                  <input type="text" value={editPrima} onChange={(e) => setEditPrima(e.target.value)} placeholder="Nueva prima" className="lumo-input p-2" />
-                  <div className="flex gap-2">
-                    <button type="submit" className="flex-1 lumo-btn-primary py-2 text-sm">Guardar</button>
-                    <button type="button" onClick={() => setEditandoId(null)} className="flex-1 lumo-btn-ghost py-2 text-sm">Cancelar</button>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="flex-1">
-                      <p className="font-bold text-ink">{o.cliente}</p>
-                      <div className="text-sm text-ink-soft flex justify-between mt-1">
-                        <span>{o.producto} - {o.aseguradora}</span>
-                        <span className="font-bold text-azul">{o.prima || 'Sin prima'}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => { setEditandoId(o.id); setEditPrima(o.prima || ''); }} className="text-ink-faint hover:text-azul p-1"><Icon name="edit" size={17} /></button>
-                      <button onClick={() => eliminarOportunidad(o.id)} className="text-ink-faint hover:text-rojo p-1"><Icon name="trash" size={17} /></button>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-ink/10">
-                    <select value={o.estado} onChange={(e) => cambiarEstadoOportunidad(o.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
-                      <option value="Cotizando">Cotizando</option><option value="Propuesta presentada">Propuesta presentada</option><option value="Negociación">Negociación</option><option value="Aceptada">Aceptada</option><option value="Trámite en aseguradora">Trámite en aseguradora</option><option value="Emitida">Emitida</option><option value="Ganada">Ganada</option><option value="Perdida">Perdida</option>
+              <div className="flex justify-between items-start mb-1">
+                <div className="flex-1">
+                  <p className="font-bold text-ink">{o.cliente}</p>
+                  <p className="text-sm text-ink-soft mt-0.5">{o.producto || 'Sin producto'}</p>
+                  {/* Datos legado (modelo viejo: aseguradora/prima en la fila) */}
+                  {(o.aseguradora || o.prima) && o.cotizaciones.length === 0 && (
+                    <p className="text-xs text-ink-faint mt-1">
+                      Registro anterior: {o.aseguradora || 'aseguradora s/d'} · {o.prima || 'sin prima'}
+                    </p>
+                  )}
+                </div>
+                <button onClick={() => eliminarOportunidad(o.id)} className="text-ink-faint hover:text-rojo p-1"><Icon name="trash" size={17} /></button>
+              </div>
+
+              {/* Cotizaciones por aseguradora */}
+              <div className="mt-2 space-y-2">
+                {o.cotizaciones.map(c => (
+                  <div key={c.id} className="flex items-center gap-2 bg-paper rounded-lg px-2.5 py-2">
+                    <span className={`lumo-chip ${chipEstadoCot(c.estado)}`}>{c.aseguradora}</span>
+                    {editCotId === c.id ? (
+                      <form onSubmit={(e) => guardarPrimaCotizacion(e, c)} className="flex-1 flex gap-1">
+                        <input
+                          type="text" value={editCotPrima} autoFocus
+                          onChange={(e) => setEditCotPrima(e.target.value)}
+                          placeholder="Prima (Ej: $12,000)"
+                          className="lumo-input py-1 px-2 text-sm"
+                        />
+                        <button type="submit" className="lumo-btn-primary px-2 py-1 text-xs">OK</button>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => { setEditCotId(c.id); setEditCotPrima(c.prima || ''); }}
+                        className="flex-1 text-left text-sm font-semibold text-azul"
+                        title="Editar prima"
+                      >
+                        {c.prima || 'capturar prima…'}
+                      </button>
+                    )}
+                    <select
+                      value={c.estado}
+                      onChange={(e) => cambiarEstadoCotizacion(c.id, e.target.value)}
+                      className="text-[11px] border border-ink/15 rounded-md p-1 bg-card text-ink-soft"
+                    >
+                      {ESTADOS_COTIZACION.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    <button onClick={() => eliminarCotizacion(c.id)} className="text-ink-faint hover:text-rojo"><Icon name="trash" size={14} /></button>
                   </div>
-                </>
-              )}
+                ))}
+
+                {agregandoCotEn === o.id ? (
+                  <form onSubmit={(e) => agregarCotizacion(e, o.id)} className="flex gap-2 items-center">
+                    <select value={cotAseguradora} onChange={(e) => setCotAseguradora(e.target.value)} className="lumo-input py-2 text-sm w-2/5">
+                      {ASEGURADORAS.map(a => <option key={a}>{a}</option>)}
+                    </select>
+                    <input
+                      type="text" value={cotPrima} onChange={(e) => setCotPrima(e.target.value)}
+                      placeholder="Prima (opcional)" className="lumo-input py-2 text-sm flex-1"
+                    />
+                    <button type="submit" className="lumo-btn-primary px-3 py-2 text-xs">Añadir</button>
+                    <button type="button" onClick={() => setAgregandoCotEn(null)} className="text-ink-faint text-xs px-1">✕</button>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => { setAgregandoCotEn(o.id); setCotPrima(''); }}
+                    className="lumo-btn-ghost w-full py-2 text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Icon name="plus" size={13} /> Cotizar en aseguradora
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-ink/10">
+                <select value={o.estado} onChange={(e) => cambiarEstadoOportunidad(o.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
+                  {ESTADOS_OPORTUNIDAD.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
           ))}
           {opsFiltradas.length === 0 && (
             <div className="lumo-card lumo-lines p-6 border-dashed text-center">
-              <p className="font-hand text-xl text-ink-faint">no se encontraron cotizaciones</p>
+              <p className="font-hand text-xl text-ink-faint">no se encontraron oportunidades</p>
             </div>
           )}
         </div>

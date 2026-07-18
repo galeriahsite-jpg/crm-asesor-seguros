@@ -3,7 +3,7 @@
 //
 // Seguridad aplicada (correcciones 2–11 de la revisión):
 // - Service role SOLO en servidor (nunca en el navegador).
-// - Validación completa de cuerpo, campos, longitudes y formato.
+// - Validación completa con Zod (estandarización del blindaje).
 // - Deduplicación atómica: índice único parcial + upsert
 //   ON CONFLICT DO NOTHING (inmune a condiciones de carrera).
 // - Rate limiting real por IP con ventana en Supabase,
@@ -14,14 +14,15 @@
 // - Consentimiento versionado.
 //
 // Variables de entorno requeridas (Vercel → Settings → Env):
+//   NEXT_PUBLIC_SUPABASE_URL
+//   NEXT_PUBLIC_SUPABASE_ANON_KEY
 //   SUPABASE_SERVICE_ROLE_KEY  (secreta, solo servidor)
 //   LUMO_LEAD_OWNER_ID         (uuid del asesor dueño de los leads)
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kbvbwuzhtsddqqacdfdb.supabase.co';
+import { z } from 'zod';
+import { configSupabase } from '../_lib/servidor';
 
 // Si cambias el texto del aviso de privacidad, actualiza esta versión.
 const CONSENTIMIENTO_VERSION = '2026-07';
@@ -35,18 +36,6 @@ const LIMITE_IP = 5;
 const LIMITE_GLOBAL = 100;
 const VENTANA_SEGUNDOS = 3600;
 
-// ── Validación (equivalente a un leadSchema, sin dependencias) ──
-type LeadValidado = {
-  nombre: string;
-  telefonoNormalizado: string;
-  interes: string;
-  consentimiento: true;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  detalles: string | null;
-};
-
 // ── Detalles extra por landing (auto, retiro, empresas, etc.) ──
 //    Se validan con límites estrictos y se serializan a texto
 //    para guardarse en nota_entrada_web (sin cambiar el esquema).
@@ -54,10 +43,18 @@ const DETALLES_MAX_CAMPOS = 15;
 const DETALLES_MAX_CLAVE = 40;
 const DETALLES_MAX_VALOR = 200;
 
-function validarDetalles(v: unknown): string | null {
-  if (v === undefined || v === null) return null;
-  if (typeof v !== 'object' || Array.isArray(v)) return null;
-  const entradas = Object.entries(v as Record<string, unknown>).slice(0, DETALLES_MAX_CAMPOS);
+function normalizarTelefonoMX(entrada: string): string | null {
+  const digitos = entrada.replace(/\D/g, '');
+  // 10 dígitos nacionales, o con prefijos 52 / 521.
+  if (digitos.length === 10) return digitos;
+  if (digitos.length === 12 && digitos.startsWith('52')) return digitos.slice(2);
+  if (digitos.length === 13 && digitos.startsWith('521')) return digitos.slice(3);
+  return null;
+}
+
+function serializarDetalles(v: Record<string, unknown> | null | undefined): string | null {
+  if (!v) return null;
+  const entradas = Object.entries(v).slice(0, DETALLES_MAX_CAMPOS);
   const partes: string[] = [];
   for (const [clave, valor] of entradas) {
     const k = clave.trim().slice(0, DETALLES_MAX_CLAVE);
@@ -72,68 +69,52 @@ function validarDetalles(v: unknown): string | null {
   return partes.length ? partes.join(' | ') : null;
 }
 
-function normalizarTelefonoMX(entrada: string): string | null {
-  const digitos = entrada.replace(/\D/g, '');
-  // 10 dígitos nacionales, o con prefijos 52 / 521.
-  if (digitos.length === 10) return digitos;
-  if (digitos.length === 12 && digitos.startsWith('52')) return digitos.slice(2);
-  if (digitos.length === 13 && digitos.startsWith('521')) return digitos.slice(3);
-  return null;
-}
+// ── Esquema Zod del lead (validación estandarizada) ──
+const campoUtm = z.preprocess(
+  v => (typeof v === 'string' ? v.trim().slice(0, 100) || null : null),
+  z.string().nullable()
+);
 
-function campoUtm(v: unknown): string | null {
-  if (typeof v !== 'string') return null;
-  const limpio = v.trim().slice(0, 100);
-  return limpio || null;
-}
-
-function validarLead(body: Record<string, unknown>):
-  | { ok: true; lead: LeadValidado }
-  | { ok: false; error: string } {
-
+const leadSchema = z.object({
   // Honeypot: si el campo oculto viene lleno, es un bot.
-  if (typeof body.sitio_web === 'string' && body.sitio_web.trim() !== '') {
-    return { ok: false, error: 'Solicitud no válida.' };
-  }
-
-  const nombre = typeof body.nombre === 'string' ? body.nombre.trim() : '';
-  if (nombre.length < 2 || nombre.length > 80) {
-    return { ok: false, error: 'Escribe tu nombre (2 a 80 caracteres).' };
-  }
-
-  const telefonoNormalizado =
-    typeof body.telefono === 'string' ? normalizarTelefonoMX(body.telefono) : null;
-  if (!telefonoNormalizado) {
-    return { ok: false, error: 'Escribe un número de WhatsApp válido de 10 dígitos.' };
-  }
-
-  const interes = typeof body.interes === 'string' ? body.interes.trim() : '';
-  if (!INTERESES_VALIDOS.includes(interes as typeof INTERESES_VALIDOS[number])) {
-    return { ok: false, error: 'Selecciona el seguro que te interesa.' };
-  }
-
-  if (body.consentimiento !== true) {
-    return { ok: false, error: 'Necesitamos tu autorización para contactarte.' };
-  }
-
-  return {
-    ok: true,
-    lead: {
-      nombre,
-      telefonoNormalizado,
-      interes,
-      consentimiento: true,
-      utm_source: campoUtm(body.utm_source),
-      utm_medium: campoUtm(body.utm_medium),
-      utm_campaign: campoUtm(body.utm_campaign),
-      detalles: validarDetalles(body.detalles),
-    },
-  };
-}
+  sitio_web: z.preprocess(
+    v => (typeof v === 'string' ? v.trim() : ''),
+    z.literal('', { error: 'Solicitud no válida.' })
+  ),
+  nombre: z.preprocess(
+    v => (typeof v === 'string' ? v.trim() : ''),
+    z.string()
+      .min(2, 'Escribe tu nombre (2 a 80 caracteres).')
+      .max(80, 'Escribe tu nombre (2 a 80 caracteres).')
+  ),
+  telefono: z.preprocess(
+    v => (typeof v === 'string' ? normalizarTelefonoMX(v) : null),
+    z.string({ error: 'Escribe un número de WhatsApp válido de 10 dígitos.' })
+  ),
+  interes: z.preprocess(
+    v => (typeof v === 'string' ? v.trim() : ''),
+    z.enum(INTERESES_VALIDOS, { error: 'Selecciona el seguro que te interesa.' })
+  ),
+  consentimiento: z.literal(true, { error: 'Necesitamos tu autorización para contactarte.' }),
+  utm_source: campoUtm.optional().default(null),
+  utm_medium: campoUtm.optional().default(null),
+  utm_campaign: campoUtm.optional().default(null),
+  detalles: z.record(z.string(), z.unknown()).nullish().default(null),
+});
 
 export async function POST(request: Request) {
   // ── Configuración del servidor ──
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let SUPABASE_URL: string;
+  let serviceKey: string | undefined;
+  try {
+    const cfg = configSupabase();
+    SUPABASE_URL = cfg.url;
+    serviceKey = cfg.serviceKey;
+  } catch (e) {
+    console.error('leads:', e);
+    return Response.json({ error: 'Servicio no disponible.' }, { status: 500 });
+  }
+
   const ownerId = process.env.LUMO_LEAD_OWNER_ID;
 
   if (!serviceKey) {
@@ -150,7 +131,7 @@ export async function POST(request: Request) {
   });
 
   // ── Cuerpo JSON válido y acotado ──
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
     const crudo = await request.text();
     if (crudo.length > 5000) {
@@ -186,12 +167,16 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Validación de campos ──
-  const validacion = validarLead(body);
-  if (!validacion.ok) {
-    return Response.json({ error: validacion.error }, { status: 400 });
+  // ── Validación de campos (Zod) ──
+  const validacion = leadSchema.safeParse(body);
+  if (!validacion.success) {
+    return Response.json(
+      { error: validacion.error.issues[0]?.message || 'Datos inválidos.' },
+      { status: 400 }
+    );
   }
-  const lead = validacion.lead;
+  const lead = validacion.data;
+  const detallesTexto = serializarDetalles(lead.detalles);
 
   // ── Verificar que el dueño configurado sea un usuario real ──
   const { data: owner, error: errOwner } =
@@ -204,7 +189,7 @@ export async function POST(request: Request) {
   const ahora = new Date().toISOString();
   const notaWeb =
     `Solicitud web · interés: ${lead.interes} · ${ahora}` +
-    (lead.detalles ? ` · ${lead.detalles}` : '');
+    (detallesTexto ? ` · ${detallesTexto}` : '');
 
   // ── Inserción atómica: ON CONFLICT DO NOTHING sobre el índice
   //    único (user_id, telefono_normalizado). Sin carrera posible. ──
@@ -214,8 +199,8 @@ export async function POST(request: Request) {
       [{
         user_id: ownerId,
         nombre: lead.nombre,
-        telefono: lead.telefonoNormalizado,
-        telefono_normalizado: lead.telefonoNormalizado,
+        telefono: lead.telefono,
+        telefono_normalizado: lead.telefono,
         producto: lead.interes,
         estado: 'Nuevo',
         fuente: 'landing',
@@ -251,7 +236,7 @@ export async function POST(request: Request) {
         nota_entrada_web: notaWeb,
       })
       .eq('user_id', ownerId)
-      .eq('telefono_normalizado', lead.telefonoNormalizado);
+      .eq('telefono_normalizado', lead.telefono);
 
     if (errUpdate) {
       console.error('leads: error al actualizar duplicado', errUpdate);

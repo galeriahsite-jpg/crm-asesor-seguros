@@ -167,42 +167,15 @@ export default function FichaProspecto() {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    // Conversión TRANSACCIONAL en el servidor (RPC): crea el cliente,
+    // migra citas/oportunidades/diagnósticos/trámites/servicios y sella
+    // el prospecto en una sola transacción. O todo, o nada.
+    const { data: clienteId, error } = await supabase.rpc('convertir_prospecto_a_cliente', {
+      p_prospecto_id: prospectoId,
+    });
 
-    const { data: nuevoCliente, error: errorInsert } = await supabase
-      .from('clientes')
-      .insert([{ nombre: prospecto.nombre, telefono: prospecto.telefono, estado: 'Activo', user_id: user.id }])
-      .select();
-
-    if (errorInsert || !nuevoCliente || nuevoCliente.length === 0) {
-      alert('Error al crear cliente: ' + errorInsert?.message);
-      return;
-    }
-
-    const clienteId = nuevoCliente[0].id;
-
-    await supabase.from('citas').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', prospectoId);
-    await supabase.from('oportunidades').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', prospectoId);
-    await supabase.from('diagnosticos').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', prospectoId);
-    await supabase.from('tramites').update({ cliente_id: clienteId, user_id: user.id }).eq('prospecto_id', prospectoId);
-
-    const en15Dias = new Date();
-    en15Dias.setDate(en15Dias.getDate() + 15);
-    const fechaPostventa = en15Dias.toISOString().split('T')[0];
-
-    const { error: errorUpdate } = await supabase
-      .from('prospectos')
-      .update({
-        estado: 'Convertido',
-        cliente_id: clienteId,
-        proxima_accion: 'Llamar para revisión postventa y pedir referidos',
-        fecha_proxima: fechaPostventa
-      })
-      .eq('id', prospectoId);
-
-    if (errorUpdate) {
-      alert('Error al actualizar el prospecto');
+    if (error || !clienteId) {
+      alert('No se pudo convertir: ' + (error?.message || 'error desconocido'));
     } else {
       alert('🎉 ¡Venta Cerrada!\n\nCliente creado e historial migrado. Ahora te llevaré a su Expediente para registrar la póliza.');
       router.push(`/clientes/${clienteId}?nuevaPoliza=true`);

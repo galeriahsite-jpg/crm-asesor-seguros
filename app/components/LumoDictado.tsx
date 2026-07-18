@@ -22,16 +22,25 @@ export default function LumoDictado() {
         const audioFile = new File([audioBlob], 'dictado.webm', { type: 'audio/webm' });
         
         setCargandoIA(true);
-        
+
+        // La ruta es autenticada: enviamos el token de la sesión.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          alert('Tu sesión ha expirado. Vuelve a iniciar sesión.');
+          setCargandoIA(false);
+          return;
+        }
+
         // Enviar al cerebro de LUMO
         const formData = new FormData();
         formData.append('audio', audioFile);
-        
+
         const res = await fetch('/api/lumo-dictado', {
           method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
           body: formData
         });
-        
+
         const data = await res.json();
         if (data.error) {
           alert('Error: ' + data.error);

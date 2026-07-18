@@ -141,11 +141,21 @@ export default function LumoCapture() {
     setFase('pensando');
     setError('');
     try {
+      // La ruta es autenticada: enviamos el token de la sesión.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Tu sesión ha expirado. Vuelve a iniciar sesión.');
+        setFase('captura');
+        return;
+      }
       // Privacidad por diseño: al modelo solo van id, nombre y tipo. Nunca teléfonos.
       const personasSinTelefono = personas.map(({ id, nombre, tipo }) => ({ id, nombre, tipo }));
       const res = await fetch('/api/lumo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ texto, personas: personasSinTelefono }),
       });
       const data = await res.json();
@@ -236,16 +246,28 @@ export default function LumoCapture() {
           }
 
         } else if (a.tipo === 'crear_oportunidad') {
+          // Modelo nuevo: UNA oportunidad; la alternativa por
+          // aseguradora (si se mencionó) va como cotización anidada.
           const persona = resolverPersona(a);
-          const { error } = await supabase.from('oportunidades').insert([{
-            cliente: a.persona_nombre, producto: d.producto || '', aseguradora: d.aseguradora || '', prima: d.prima || '',
+          const { data: op, error } = await supabase.from('oportunidades').insert([{
+            cliente: a.persona_nombre, producto: d.producto || '',
             estado: 'Cotizando',
             prospecto_id: persona?.tipo === 'prospecto' ? persona.id : null,
             cliente_id: persona?.tipo === 'cliente' ? persona.id : null,
             user_id: user.id,
-          }]);
+          }]).select().single();
           if (error) throw error;
-          resultados.push({ ...a, resultado: 'Cotización registrada' });
+          if (d.aseguradora || d.prima) {
+            const { error: errCot } = await supabase.from('cotizaciones').insert([{
+              oportunidad_id: op.id,
+              aseguradora: d.aseguradora || 'Por definir',
+              prima: d.prima || null,
+              estado: d.prima ? 'Cotizada' : 'Pendiente',
+              user_id: user.id,
+            }]);
+            if (errCot) throw errCot;
+          }
+          resultados.push({ ...a, resultado: 'Oportunidad registrada' });
 
         } else if (a.tipo === 'crear_servicio') {
           const persona = resolverPersona(a);

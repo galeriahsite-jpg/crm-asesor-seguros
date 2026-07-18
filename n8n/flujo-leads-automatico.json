@@ -1,5 +1,5 @@
 {
-  "name": "Leads Automáticos - CRM Asesor (polling + WhatsApp)",
+  "name": "Leads Automáticos - CRM Asesor (oportunidad + cotizaciones + WhatsApp)",
   "nodes": [
     {
       "parameters": {
@@ -16,7 +16,10 @@
       "name": "Cada 2 minutos",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -54,7 +57,10 @@
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -62,17 +68,35 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "fuente", "value": "eq.landing" },
-            { "name": "n8n_procesado", "value": "is.null" },
-            { "name": "select", "value": "id,nombre,telefono,producto,nota_entrada_web,user_id" },
-            { "name": "limit", "value": "20" }
+            {
+              "name": "fuente",
+              "value": "eq.landing"
+            },
+            {
+              "name": "n8n_procesado",
+              "value": "is.null"
+            },
+            {
+              "name": "select",
+              "value": "id,nombre,telefono,producto,nota_entrada_web,user_id"
+            },
+            {
+              "name": "limit",
+              "value": "20"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "={{ $json.service_key }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $json.service_key }}" }
+            {
+              "name": "apikey",
+              "value": "={{ $json.service_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.service_key }}"
+            }
           ]
         },
         "options": {}
@@ -81,108 +105,58 @@
       "name": "Buscar Leads Nuevos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Un item de entrada por cada lead pendiente.\n// Por producto, define en qué aseguradoras se cotiza.\nconst PLAN = {\n  'Auto':           ['AXA', 'HDI', 'ABA Seguros', 'GNP'],\n  'Vida':           ['GNP', 'MetLife', 'AXA'],\n  'Gastos Médicos': ['GNP', 'AXA', 'MetLife'],\n  'Hogar':          ['AXA', 'HDI', 'GNP'],\n  'Retiro':         ['Profuturo', 'MetLife'],\n  'Empresas':       ['GNP', 'MetLife', 'AXA'],\n  'Referido':       ['GNP', 'AXA']\n};\n\nconst URLS = {\n  'AXA': 'https://axa.mx/',\n  'HDI': 'https://www.hdi.com.mx/personas/seguros-autos/',\n  'ABA Seguros': 'https://miauto.com.mx/seguros/aba',\n  'GNP': 'https://www.gnp.com.mx/',\n  'MetLife': 'https://www.metlife.com.mx/',\n  'Profuturo': 'https://www.profuturo.mx/'\n};\n\nconst salida = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (!p || !p.id) continue;\n  const producto = p.producto || 'Referido';\n  const aseguradoras = PLAN[producto] || PLAN['Referido'];\n\n  const rows = aseguradoras.map(a => ({\n    cliente: p.nombre,\n    producto: producto === 'Referido' ? 'Por definir' : producto,\n    aseguradora: a,\n    prima: null,\n    estado: 'Cotizando',\n    prospecto_id: p.id,\n    user_id: p.user_id\n  }));\n\n  const links = aseguradoras.map(a => `${a}: ${URLS[a] || ''}`).join('\\n');\n\n  const mensaje =\n    `NUEVO LEAD (${producto})\\n` +\n    `Nombre: ${p.nombre}\\n` +\n    `WhatsApp: ${p.telefono}\\n` +\n    `Datos: ${p.nota_entrada_web || 'sin detalles'}\\n\\n` +\n    `Cotizar en:\\n${links}`;\n\n  salida.push({ json: { id: p.id, rows, mensaje } });\n}\n\nreturn salida;"
+        "jsCode": "// ============================================================\n// Por cada lead nuevo (modelo nuevo de la auditoría, sección 14):\n//   1. Crea UNA oportunidad \"Por diagnosticar\" (no una por\n//      aseguradora: eso distorsionaba pipeline y métricas).\n//   2. Crea N cotizaciones \"Pendiente\" anidadas, una por\n//      aseguradora sugerida según el producto, con su link.\n//   3. Avisa al asesor por WhatsApp (CallMeBot).\n//   4. Marca el lead como procesado (n8n_procesado).\n// Si un lead falla a mitad, NO se marca procesado: se reintenta\n// en el siguiente ciclo (los inserts duplicados posibles son\n// visibles y borrables desde Ventas).\n// ============================================================\nconst config = $('Config').first().json;\n\nconst PLAN = {\n  'Auto':           ['AXA', 'HDI', 'ABA Seguros', 'GNP'],\n  'Vida':           ['GNP', 'MetLife', 'AXA'],\n  'Gastos Médicos': ['GNP', 'AXA', 'MetLife'],\n  'Hogar':          ['AXA', 'HDI', 'GNP'],\n  'Retiro':         ['Profuturo', 'MetLife'],\n  'Empresas':       ['GNP', 'MetLife', 'AXA'],\n  'Referido':       ['GNP', 'AXA']\n};\n\nconst URLS = {\n  'AXA': 'https://axa.mx/',\n  'HDI': 'https://www.hdi.com.mx/personas/seguros-autos/',\n  'ABA Seguros': 'https://miauto.com.mx/seguros/aba',\n  'GNP': 'https://www.gnp.com.mx/',\n  'MetLife': 'https://www.metlife.com.mx/',\n  'Profuturo': 'https://www.profuturo.mx/'\n};\n\nconst headers = {\n  apikey: config.service_key,\n  Authorization: `Bearer ${config.service_key}`,\n  'Content-Type': 'application/json',\n};\n\nconst salida = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (!p || !p.id) continue;\n  const producto = p.producto || 'Referido';\n  const aseguradoras = PLAN[producto] || PLAN['Referido'];\n\n  try {\n    // 1. UNA oportunidad por lead\n    const ops = await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${config.supabase_url}/rest/v1/oportunidades`,\n      headers: { ...headers, Prefer: 'return=representation' },\n      body: [{\n        cliente: p.nombre,\n        producto: producto === 'Referido' ? 'Por definir' : producto,\n        estado: 'Por diagnosticar',\n        prospecto_id: p.id,\n        user_id: p.user_id,\n      }],\n      json: true,\n    });\n    const oportunidadId = Array.isArray(ops) ? ops[0].id : ops.id;\n\n    // 2. Cotizaciones pendientes por aseguradora (anidadas)\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${config.supabase_url}/rest/v1/cotizaciones`,\n      headers: { ...headers, Prefer: 'return=minimal' },\n      body: aseguradoras.map(a => ({\n        oportunidad_id: oportunidadId,\n        aseguradora: a,\n        estado: 'Pendiente',\n        url_cotizador: URLS[a] || null,\n        user_id: p.user_id,\n      })),\n      json: true,\n    });\n\n    // 3. Aviso por WhatsApp\n    const links = aseguradoras.map(a => `${a}: ${URLS[a] || ''}`).join('\\n');\n    const mensaje =\n      `NUEVO LEAD (${producto})\\n` +\n      `Nombre: ${p.nombre}\\n` +\n      `WhatsApp: ${p.telefono}\\n` +\n      `Datos: ${p.nota_entrada_web || 'sin detalles'}\\n\\n` +\n      `Se creó 1 oportunidad con ${aseguradoras.length} cotizaciones pendientes.\\n` +\n      `Cotizar en:\\n${links}`;\n    await this.helpers.httpRequest({\n      method: 'GET',\n      url: 'https://api.callmebot.com/whatsapp.php',\n      qs: {\n        phone: config.whatsapp_phone,\n        text: mensaje,\n        apikey: config.callmebot_apikey,\n      },\n    });\n\n    // 4. Marcar procesado (solo si todo lo anterior funcionó)\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: `${config.supabase_url}/rest/v1/prospectos?id=eq.${p.id}`,\n      headers: { ...headers, Prefer: 'return=minimal' },\n      body: { n8n_procesado: new Date().toISOString() },\n      json: true,\n    });\n\n    salida.push({ json: { lead: p.id, ok: true, oportunidad: oportunidadId, cotizaciones: aseguradoras.length } });\n  } catch (e) {\n    salida.push({ json: { lead: p.id, ok: false, error: String(e && e.message || e) } });\n  }\n}\n\nreturn salida.length ? salida : [{ json: { ok: true, mensaje: 'Sin leads pendientes' } }];"
       },
-      "id": "b2c3d4e5-0004-4000-8000-000000000004",
-      "name": "Preparar por Lead",
+      "id": "b2c3d4e5-0010-4000-8000-000000000010",
+      "name": "Procesar Leads",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Config').first().json.supabase_url }}/rest/v1/oportunidades",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{ $('Config').first().json.service_key }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $('Config').first().json.service_key }}" },
-            { "name": "Prefer", "value": "return=minimal" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.rows) }}",
-        "options": {}
-      },
-      "id": "b2c3d4e5-0005-4000-8000-000000000005",
-      "name": "Crear Oportunidades",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 0]
-    },
-    {
-      "parameters": {
-        "url": "https://api.callmebot.com/whatsapp.php",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "phone", "value": "={{ $('Config').first().json.whatsapp_phone }}" },
-            { "name": "text", "value": "={{ $('Preparar por Lead').item.json.mensaje }}" },
-            { "name": "apikey", "value": "={{ $('Config').first().json.callmebot_apikey }}" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b2c3d4e5-0006-4000-8000-000000000006",
-      "name": "Avisar por WhatsApp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1100, 0]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $('Config').first().json.supabase_url }}/rest/v1/prospectos",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "id", "value": "=eq.{{ $('Preparar por Lead').item.json.id }}" }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{ $('Config').first().json.service_key }}" },
-            { "name": "Authorization", "value": "=Bearer {{ $('Config').first().json.service_key }}" },
-            { "name": "Prefer", "value": "return=minimal" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ n8n_procesado: new Date().toISOString() }) }}",
-        "options": {}
-      },
-      "id": "b2c3d4e5-0007-4000-8000-000000000007",
-      "name": "Marcar Procesado",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1320, 0]
+      "position": [
+        660,
+        0
+      ]
     }
   ],
   "connections": {
     "Cada 2 minutos": {
-      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Config": {
-      "main": [[{ "node": "Buscar Leads Nuevos", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Buscar Leads Nuevos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Buscar Leads Nuevos": {
-      "main": [[{ "node": "Preparar por Lead", "type": "main", "index": 0 }]]
-    },
-    "Preparar por Lead": {
-      "main": [[{ "node": "Crear Oportunidades", "type": "main", "index": 0 }]]
-    },
-    "Crear Oportunidades": {
-      "main": [[{ "node": "Avisar por WhatsApp", "type": "main", "index": 0 }]]
-    },
-    "Avisar por WhatsApp": {
-      "main": [[{ "node": "Marcar Procesado", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Procesar Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
