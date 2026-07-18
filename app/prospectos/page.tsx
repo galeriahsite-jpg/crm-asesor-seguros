@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon, PageHeader } from '../components/lumo';
+import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 import LumoDictado from '../components/LumoDictado';
 import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
 
@@ -157,6 +157,16 @@ export default function Prospectos() {
     p.telefono?.includes(busqueda)
   );
 
+  // Orden de proceso: la lista se lee como un embudo, no como un archivo.
+  const GRUPOS_ETAPA = [
+    { estado: 'Nuevo',         titulo: 'Nuevos · haz el primer contacto',        chip: 'lumo-chip-rojo' },
+    { estado: 'Contactado',    titulo: 'Contactados · agenda el diagnóstico',    chip: 'lumo-chip-azul' },
+    { estado: 'Calificado',    titulo: 'Calificados · prepara la cotización',    chip: 'lumo-chip-negro' },
+    { estado: 'Sin respuesta', titulo: 'Sin respuesta · decide: reintentar o soltar', chip: '' },
+  ];
+  const estadosConocidos = GRUPOS_ETAPA.map(g => g.estado);
+  const otros = prospectosFiltrados.filter(p => !estadosConocidos.includes(p.estado));
+
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
 
@@ -168,6 +178,11 @@ export default function Prospectos() {
           <Icon name="plus" size={14} /> {mostrarForm ? 'Cerrar' : 'Nuevo'}
         </button>
       </PageHeader>
+
+      <FlujoProceso
+        paso={1}
+        texto="Aquí viven las personas que aún NO te compran. El orden es: contactar → diagnosticar → cotizar. Cuando alguien compra, se convierte en Cliente y sale de esta lista."
+      />
 
       <main className="p-6 space-y-8">
 
@@ -235,9 +250,19 @@ export default function Prospectos() {
           </div>
         </div>
 
-        {/* Lista de Prospectos */}
-        <div className="space-y-3">
-          {prospectosFiltrados.map((p) => (
+        {/* Lista de Prospectos agrupada por etapa del proceso */}
+        <div className="space-y-6">
+          {[
+            ...GRUPOS_ETAPA.map(g => ({ ...g, items: prospectosFiltrados.filter(p => p.estado === g.estado) })),
+            { estado: '__otros__', titulo: 'Otros', chip: '', items: otros },
+          ].filter(g => g.items.length > 0).map(g => (
+            <div key={g.estado}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className={`lumo-chip ${g.chip}`}>{g.items.length}</span>
+                <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{g.titulo}</h3>
+              </div>
+              <div className="space-y-3">
+                {g.items.map((p) => (
             <div key={p.id} className="lumo-card p-4 hover:border-azul/50 transition-colors">
               {editandoId === p.id ? (
                 /* Modo Edición */
@@ -306,6 +331,9 @@ export default function Prospectos() {
                   </div>
                 </>
               )}
+            </div>
+                ))}
+              </div>
             </div>
           ))}
           {prospectosFiltrados.length === 0 && (

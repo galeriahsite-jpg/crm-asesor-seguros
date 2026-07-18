@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon } from '../components/lumo';
+import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 
 type Diagnostico = {
   id: string;
@@ -137,6 +137,11 @@ export default function Diagnosticos() {
         </div>
         <Link href="/ventas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
+
+      <FlujoProceso
+        paso={2}
+        texto="Antes de cotizar, entiende: qué quiere proteger, qué riesgo le preocupa y cuánto puede invertir. Un buen diagnóstico hace que la cotización se venda sola."
+      />
 
       <main className="p-6 space-y-8">
 

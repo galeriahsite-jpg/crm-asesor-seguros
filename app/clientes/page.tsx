@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon } from '../components/lumo';
+import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 
 type Poliza = {
   id: string;
@@ -133,6 +133,11 @@ export default function Clientes() {
           <Icon name="heart" size={14} /> Servicio
         </Link>
       </header>
+
+      <FlujoProceso
+        paso={5}
+        texto="Ya te compraron: aquí se cuida la relación. Registra sus pólizas, atiende sus servicios y llega a las renovaciones ANTES de que venzan. De aquí salen los referidos."
+      />
 
       <main className="p-6 space-y-8">
 

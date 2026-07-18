@@ -304,6 +304,17 @@ export default function FichaProspecto() {
     : oportunidades.length === 0 ? 'Registrar y presentar la cotización'
     : 'Dar seguimiento a la cotización y cerrar';
 
+  // ¿En qué paso del proceso va ESTA persona? (se calcula de sus datos)
+  const contactado = !!prospecto?.primer_contacto_at ||
+    ['Contactado', 'Calificado', 'Convertido'].includes(prospecto?.estado);
+  const PASOS_PERSONA = [
+    { nombre: 'Contactar', hecho: contactado },
+    { nombre: 'Diagnosticar', hecho: diagnosticos.length > 0 },
+    { nombre: 'Cotizar', hecho: oportunidades.length > 0 },
+    { nombre: 'Cerrar', hecho: prospecto?.estado === 'Convertido' },
+  ];
+  const pasoActual = PASOS_PERSONA.findIndex(p => !p.hecho);
+
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
       <header className="px-6 pt-10 pb-5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
@@ -321,6 +332,22 @@ export default function FichaProspecto() {
           <p className="text-xs text-azul uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
             <Icon name="hoy" size={14} /> Antes de contactar
           </p>
+
+          {/* ¿Dónde va esta persona en el proceso? */}
+          <div className="flex items-center gap-1 mb-3 flex-wrap">
+            {PASOS_PERSONA.map((p, i) => (
+              <span key={p.nombre} className="flex items-center gap-1">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+                  p.hecho ? 'bg-verde-soft text-verde'
+                  : i === pasoActual ? 'bg-azul text-white'
+                  : 'bg-card text-ink-faint border border-ink/10'
+                }`}>
+                  {p.hecho ? '✓ ' : `${i + 1} `}{p.nombre}
+                </span>
+                {i < PASOS_PERSONA.length - 1 && <span className="text-ink-faint text-[10px]">→</span>}
+              </span>
+            ))}
+          </div>
           <div className="text-sm text-ink space-y-1">
             <p><span className="text-ink-faint">Interés:</span> <b>{prospecto?.producto || 'sin definir'}</b> · etapa <b>{prospecto?.estado}</b></p>
             {ultimaActividad && (

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { BottomNav, Icon, PageHeader } from '../components/lumo';
+import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 
 type Cita = {
   id: string;
@@ -108,6 +108,34 @@ export default function Agenda() {
     c.tipo?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  // Orden de proceso: primero lo que exige acción, luego lo que viene.
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const mananaD = new Date(); mananaD.setDate(mananaD.getDate() + 1);
+  const mananaStr = mananaD.toISOString().split('T')[0];
+
+  const GRUPOS_CITAS = [
+    {
+      clave: 'vencidas', titulo: 'Vencidas sin resultado · resuélvelas primero', chip: 'lumo-chip-rojo',
+      items: citasFiltradas.filter(c => c.estado === 'Pendiente' && c.fecha < hoyStr),
+    },
+    {
+      clave: 'hoy', titulo: 'Hoy', chip: 'lumo-chip-azul',
+      items: citasFiltradas.filter(c => c.estado === 'Pendiente' && c.fecha === hoyStr),
+    },
+    {
+      clave: 'manana', titulo: 'Mañana', chip: 'lumo-chip-negro',
+      items: citasFiltradas.filter(c => c.estado === 'Pendiente' && c.fecha === mananaStr),
+    },
+    {
+      clave: 'proximas', titulo: 'Próximas', chip: '',
+      items: citasFiltradas.filter(c => c.estado === 'Pendiente' && c.fecha > mananaStr),
+    },
+    {
+      clave: 'historial', titulo: 'Con resultado (historial)', chip: '',
+      items: citasFiltradas.filter(c => c.estado !== 'Pendiente'),
+    },
+  ];
+
   return (
     <div className="min-h-screen pb-28 max-w-md mx-auto">
       <PageHeader titulo="Agenda" subtitulo="citas y compromisos">
@@ -118,6 +146,11 @@ export default function Agenda() {
           <Icon name="plus" size={14} /> {mostrarForm ? 'Cerrar' : 'Nueva cita'}
         </button>
       </PageHeader>
+
+      <FlujoProceso
+        paso={1}
+        texto="Las citas mueven el proceso. Orden de lectura: primero las vencidas sin resultado (regístralas o reprográmalas), luego las de hoy, y al final lo que viene."
+      />
 
       <main className="p-6 space-y-8">
         {mostrarForm && (
@@ -181,8 +214,15 @@ export default function Agenda() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {citasFiltradas.map((c) => (
+        <div className="space-y-6">
+          {GRUPOS_CITAS.filter(g => g.items.length > 0).map(g => (
+            <div key={g.clave}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className={`lumo-chip ${g.chip}`}>{g.items.length}</span>
+                <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{g.titulo}</h3>
+              </div>
+              <div className="space-y-3">
+                {g.items.map((c) => (
             <div key={c.id} className="lumo-card p-4">
               {editandoId === c.id ? (
                 <form onSubmit={(e) => guardarEdicion(e, c.id)} className="space-y-3">
@@ -226,6 +266,9 @@ export default function Agenda() {
                   </div>
                 </>
               )}
+            </div>
+                ))}
+              </div>
             </div>
           ))}
           {citasFiltradas.length === 0 && (

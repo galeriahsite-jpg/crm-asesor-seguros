@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon } from '../components/lumo';
+import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 
 type Tramite = {
   id: string;
@@ -115,6 +115,11 @@ export default function Tramites() {
         </div>
         <Link href="/ventas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
+
+      <FlujoProceso
+        paso={4}
+        texto="Entre la venta aceptada y la póliza emitida está el trámite. Destraba primero los atorados: información incompleta o pago pendiente detienen la emisión."
+      />
 
       <main className="p-6 space-y-8">
         <form onSubmit={guardarTramite} className="lumo-card relative p-5 space-y-4">

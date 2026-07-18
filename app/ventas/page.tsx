@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon } from '../components/lumo';
+import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
 
 type Cotizacion = {
@@ -190,6 +190,17 @@ export default function Ventas() {
     o.cliente?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  // El pipeline se lee en orden de proceso, no por fecha de captura.
+  const GRUPOS_PIPELINE: { titulo: string; chip: string; estados: string[] }[] = [
+    { titulo: 'Por diagnosticar · entiende la necesidad primero', chip: 'lumo-chip-rojo', estados: ['Por diagnosticar'] },
+    { titulo: 'Cotizando · consigue las primas', chip: 'lumo-chip-azul', estados: ['Cotizando'] },
+    { titulo: 'Propuesta y negociación · empuja el cierre', chip: 'lumo-chip-negro', estados: ['Propuesta presentada', 'Negociación'] },
+    { titulo: 'En emisión · dale seguimiento al trámite', chip: '', estados: ['Aceptada', 'Trámite en aseguradora', 'Emitida'] },
+    { titulo: 'Cerradas', chip: '', estados: ['Ganada', 'Perdida'] },
+  ];
+  const estadosPipeline = GRUPOS_PIPELINE.flatMap(g => g.estados);
+  const opsOtras = opsFiltradas.filter(o => !estadosPipeline.includes(o.estado));
+
   const chipEstadoCot = (estado: string) =>
     estado === 'Elegida' ? 'lumo-chip-azul'
     : estado === 'Descartada' ? 'lumo-chip-negro'
@@ -214,6 +225,11 @@ export default function Ventas() {
           </button>
         </div>
       </header>
+
+      <FlujoProceso
+        paso={3}
+        texto="Cada persona tiene UNA oportunidad que avanza por etapas; las cotizaciones por aseguradora viven adentro. Lo primero de la lista es lo que está más atrás en el proceso."
+      />
 
       <main className="p-6 space-y-8">
         {mostrarForm && (
@@ -264,8 +280,18 @@ export default function Ventas() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {opsFiltradas.map((o) => (
+        <div className="space-y-6">
+          {[
+            ...GRUPOS_PIPELINE.map(g => ({ ...g, items: opsFiltradas.filter(o => g.estados.includes(o.estado)) })),
+            { titulo: 'Otras', chip: '', estados: [], items: opsOtras },
+          ].filter(g => g.items.length > 0).map(g => (
+            <div key={g.titulo}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className={`lumo-chip ${g.chip}`}>{g.items.length}</span>
+                <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{g.titulo}</h3>
+              </div>
+              <div className="space-y-3">
+                {g.items.map((o) => (
             <div key={o.id} className="lumo-card p-4">
               <div className="flex justify-between items-start mb-1">
                 <div className="flex-1">
@@ -342,6 +368,9 @@ export default function Ventas() {
                 <select value={o.estado} onChange={(e) => cambiarEstadoOportunidad(o.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
                   {ESTADOS_OPORTUNIDAD.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+              </div>
+            </div>
+                ))}
               </div>
             </div>
           ))}

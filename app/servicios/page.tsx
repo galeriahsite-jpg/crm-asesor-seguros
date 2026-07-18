@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
-import { BottomNav, Icon } from '../components/lumo';
+import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 
 type Servicio = {
   id: string;
@@ -116,6 +116,11 @@ export default function Servicios() {
         </div>
         <Link href="/clientes" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
+
+      <FlujoProceso
+        paso={5}
+        texto="Postventa: cada solicitud del cliente se registra, se atiende y se cierra con seguimiento. Un buen servicio sostiene renovaciones y referidos."
+      />
 
       <main className="p-6 space-y-8">
         <form onSubmit={guardarServicio} className="lumo-card relative p-5 space-y-4">

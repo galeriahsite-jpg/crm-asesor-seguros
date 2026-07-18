@@ -94,6 +94,37 @@ export function BottomNav() {
 }
 
 /* ============================================================
+   LUMO · Flujo de proceso
+   Cada módulo muestra en qué paso del proceso comercial vive,
+   qué se hace ahí y qué sigue. El proceso es siempre el mismo:
+   Captar → Contactar → Diagnosticar → Cotizar → Cerrar → Cuidar
+   ============================================================ */
+
+const ETAPAS_PROCESO = ['Captar', 'Contactar', 'Diagnosticar', 'Cotizar', 'Cerrar', 'Cuidar'];
+
+export function FlujoProceso({ paso, texto }: { paso: number; texto: string }) {
+  return (
+    <div className="px-6 pt-4">
+      <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+        {ETAPAS_PROCESO.map((e, i) => (
+          <span key={e} className="flex items-center gap-1 shrink-0">
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md tracking-wide ${
+              i === paso
+                ? 'bg-azul text-white'
+                : i < paso
+                  ? 'bg-azul-soft text-azul'
+                  : 'bg-card text-ink-faint border border-ink/10'
+            }`}>{i + 1} {e}</span>
+            {i < ETAPAS_PROCESO.length - 1 && <span className="text-ink-faint text-[10px]">→</span>}
+          </span>
+        ))}
+      </div>
+      <p className="text-xs text-ink-soft mt-1.5 leading-snug">{texto}</p>
+    </div>
+  );
+}
+
+/* ============================================================
    LUMO · Encabezado de página
    ============================================================ */
 
