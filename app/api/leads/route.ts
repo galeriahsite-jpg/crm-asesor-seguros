@@ -23,6 +23,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { configSupabase } from '../_lib/servidor';
+import { normalizarTelefonoMX } from '../../lib/telefono';
 
 // Si cambias el texto del aviso de privacidad, actualiza esta versión.
 const CONSENTIMIENTO_VERSION = '2026-07';
@@ -43,14 +44,8 @@ const DETALLES_MAX_CAMPOS = 15;
 const DETALLES_MAX_CLAVE = 40;
 const DETALLES_MAX_VALOR = 200;
 
-function normalizarTelefonoMX(entrada: string): string | null {
-  const digitos = entrada.replace(/\D/g, '');
-  // 10 dígitos nacionales, o con prefijos 52 / 521.
-  if (digitos.length === 10) return digitos;
-  if (digitos.length === 12 && digitos.startsWith('52')) return digitos.slice(2);
-  if (digitos.length === 13 && digitos.startsWith('521')) return digitos.slice(3);
-  return null;
-}
+// normalizarTelefonoMX viene de app/lib/telefono.ts: regla ÚNICA
+// compartida con todos los formularios del CRM.
 
 function serializarDetalles(v: Record<string, unknown> | null | undefined): string | null {
   if (!v) return null;

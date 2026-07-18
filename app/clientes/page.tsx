@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
+import { validarTelefonoOpcional } from '../lib/telefono';
 
 type Poliza = {
   id: string;
@@ -54,8 +55,12 @@ export default function Clientes() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Teléfono opcional; si viene, debe ser un número MX válido.
+    const tel = validarTelefonoOpcional(telefono);
+    if (!tel.ok) { alert(tel.error); return; }
+
     const { data: nuevo, error } = await supabase.from('clientes')
-      .insert([{ nombre, telefono, estado: 'Activo', user_id: user.id }])
+      .insert([{ nombre, telefono: tel.telefono, estado: 'Activo', user_id: user.id }])
       .select().single();
     if (error) {
       alert('Error al guardar cliente: ' + error.message);
@@ -87,9 +92,12 @@ export default function Clientes() {
 
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
+    const tel = validarTelefonoOpcional(editTelefono);
+    if (!tel.ok) { alert(tel.error); return; }
+
     const { error } = await supabase
       .from('clientes')
-      .update({ nombre: editNombre, telefono: editTelefono })
+      .update({ nombre: editNombre, telefono: tel.telefono })
       .eq('id', id);
 
     if (error) {

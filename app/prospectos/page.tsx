@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BottomNav, Icon, PageHeader, FlujoProceso } from '../components/lumo';
 import LumoDictado from '../components/LumoDictado';
 import { registrarActividad, sellarPrimerContacto } from '../lib/actividades';
+import { validarTelefonoOpcional } from '../lib/telefono';
 
 type Prospecto = {
   id: string;
@@ -58,9 +59,13 @@ export default function Prospectos() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert("Tu sesión ha expirado."); return; }
 
+    // Teléfono opcional; si viene, debe ser un número MX válido.
+    const tel = validarTelefonoOpcional(telefono);
+    if (!tel.ok) { alert(tel.error); return; }
+
     const { data: nuevo, error } = await supabase.from('prospectos').insert([{
       nombre,
-      telefono,
+      telefono: tel.telefono,
       producto,
       nota,
       estado: 'Nuevo',
@@ -114,9 +119,12 @@ export default function Prospectos() {
 
   async function guardarEdicion(e: React.FormEvent, id: string) {
     e.preventDefault();
+    const tel = validarTelefonoOpcional(editTelefono);
+    if (!tel.ok) { alert(tel.error); return; }
+
     const { error } = await supabase
       .from('prospectos')
-      .update({ nombre: editNombre, telefono: editTelefono, producto: editProducto, nota: editNota })
+      .update({ nombre: editNombre, telefono: tel.telefono, producto: editProducto, nota: editNota })
       .eq('id', id);
 
     if (error) {

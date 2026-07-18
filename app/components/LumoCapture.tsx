@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import { supabase } from '../../supabaseClient';
 import { Icon } from './lumo';
 import { registrarActividad, sellarPrimerContacto, type TipoActividad } from '../lib/actividades';
+import { normalizarTelefonoMX } from '../lib/telefono';
 
 type Persona = { id: string; nombre: string; tipo: 'prospecto' | 'cliente'; telefono?: string };
 
@@ -200,16 +201,19 @@ export default function LumoCapture() {
       const d = a.datos || {};
       try {
         if (a.tipo === 'crear_prospecto') {
+          // Teléfono propuesto por la IA: solo se guarda si es MX válido.
+          const telProspecto = d.telefono ? normalizarTelefonoMX(d.telefono) : null;
           const { data, error } = await supabase.from('prospectos')
-            .insert([{ nombre: a.persona_nombre, telefono: d.telefono || '', producto: d.producto || '', nota: d.nota || '', estado: 'Nuevo', user_id: user.id }])
+            .insert([{ nombre: a.persona_nombre, telefono: telProspecto, producto: d.producto || '', nota: d.nota || '', estado: 'Nuevo', user_id: user.id }])
             .select().single();
           if (error) throw error;
           registroCreados.set(a.persona_nombre.trim().toLowerCase(), { id: data.id, tipo: 'prospecto' });
           resultados.push({ ...a, resultado: 'Prospecto creado' });
 
         } else if (a.tipo === 'crear_cliente') {
+          const telCliente = d.telefono ? normalizarTelefonoMX(d.telefono) : null;
           const { data, error } = await supabase.from('clientes')
-            .insert([{ nombre: a.persona_nombre, telefono: d.telefono || '', estado: 'Activo', user_id: user.id }])
+            .insert([{ nombre: a.persona_nombre, telefono: telCliente, estado: 'Activo', user_id: user.id }])
             .select().single();
           if (error) throw error;
           registroCreados.set(a.persona_nombre.trim().toLowerCase(), { id: data.id, tipo: 'cliente' });

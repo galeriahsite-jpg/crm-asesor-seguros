@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import { registrarActividad } from '../lib/actividades';
+import { normalizarTelefonoMX } from '../lib/telefono';
 
 export default function LumoDictado() {
   const [grabando, setGrabando] = useState(false);
@@ -71,9 +72,14 @@ export default function LumoDictado() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // El teléfono que dictó la IA solo se guarda si es un número MX
+    // válido (10 dígitos, o con prefijo 52/521); si no, queda vacío
+    // y el asesor lo captura después — no se guardan números basura.
+    const telValido = datos.telefono ? normalizarTelefonoMX(String(datos.telefono)) : null;
+
     const { data: nuevo, error } = await supabase.from('prospectos').insert([{
       nombre: datos.nombre,
-      telefono: datos.telefono,
+      telefono: telValido,
       producto: datos.producto,
       nota: datos.nota,
       estado: 'Nuevo',
