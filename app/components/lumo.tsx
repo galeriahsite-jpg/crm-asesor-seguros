@@ -107,9 +107,9 @@ const ETAPAS_PROCESO = ['Captar', 'Contactar', 'Diagnosticar', 'Cotizar', 'Cerra
 export function FlujoProceso({ paso, texto }: { paso: number; texto: string }) {
   return (
     <div className="px-4 pt-2.5">
-      <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex flex-wrap items-center gap-1">
         {ETAPAS_PROCESO.map((e, i) => (
-          <span key={e} className="flex items-center gap-1 shrink-0">
+          <span key={e} className="flex items-center gap-1">
             <span className={`text-xs font-semibold px-1.5 py-0.5 rounded tracking-normal ${
               i === paso
                 ? 'bg-azul text-white'

@@ -242,13 +242,12 @@ export default function Home() {
       {/* Header LUMO */}
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg mb-1.5" />
-          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">tu espacio. tus ideas. tu día.</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Hoy</h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg" />
+            <h1 className="text-2xl font-bold text-ink tracking-tight">Hoy</h1>
+          </div>
           {usuarioEmail && (
-            <p className="text-xs text-ink-soft mt-1 flex items-center gap-1">
-              <Icon name="user" size={12} /> {usuarioEmail}
-            </p>
+            <p className="text-xs text-ink-faint mt-0.5 truncate max-w-[200px]">{usuarioEmail}</p>
           )}
         </div>
         <div className="flex gap-2 pb-1">
@@ -264,7 +263,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="p-4 space-y-5">
+      <main className="p-4 space-y-4">
 
         {/* Alertas Rojas (Urgente) */}
         <div className="space-y-3">
@@ -299,7 +298,7 @@ export default function Home() {
         {/* LUMO · Centro de decisiones */}
         {decisiones.length > 0 && (
           <div>
-            <h2 className="lumo-section-title mb-4 px-1 flex items-center gap-2">
+            <h2 className="lumo-section-title mb-2 px-1 flex items-center gap-2">
               <span className="w-4 h-4 bg-azul rounded flex items-center justify-center text-white"><Icon name="hoy" size={11} /></span>
               LUMO necesita tu decisión
             </h2>
@@ -336,32 +335,32 @@ export default function Home() {
 
         {/* Tarjetas Principales (Cuaderno) */}
         <div>
-          <h2 className="lumo-section-title mb-4 px-1">Tu Cuaderno</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <h2 className="lumo-section-title mb-2 px-1">Tu Cuaderno</h2>
+          <div className="grid grid-cols-2 gap-3">
 
-            <Link href="/agenda" className="lumo-card p-5 hover:border-azul transition-colors">
-              <Icon name="phone" size={22} className="text-azul mb-4" />
-              <p className="text-2xl font-bold text-ink tracking-tighter">{totalLlamadas}</p>
-              <p className="text-xs text-ink-soft font-medium mt-1">Llamadas pendientes</p>
-            </Link>
-
-            <Link href="/prospectos" className="lumo-card p-5 hover:border-azul transition-colors">
-              <Icon name="user" size={22} className="text-azul mb-4" />
-              <p className="text-2xl font-bold text-ink tracking-tighter">{totalProspectos}</p>
-              <p className="text-xs text-ink-soft font-medium mt-1">Prospectos activos</p>
-            </Link>
-
-            <Link href="/clientes" className="col-span-2 bg-azul p-5 rounded-2xl shadow-sm hover:bg-azul-dark transition-colors">
-              <div className="flex justify-between items-center">
-                <div>
-                  <Icon name="refresh" size={22} className="text-white/80 mb-4" />
-                  <p className="text-3xl font-bold text-white tracking-tighter">{totalRenovaciones}</p>
-                  <p className="text-xs text-white/70 font-medium mt-1">Renovaciones en 30 días</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-azul text-xs font-bold uppercase tracking-wider bg-card px-3 py-1 rounded-full">Atender</p>
-                </div>
+            <Link href="/agenda" className="lumo-card px-3.5 py-3 hover:border-azul transition-colors flex items-center gap-3">
+              <Icon name="phone" size={22} className="text-azul shrink-0" />
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-ink tracking-tighter leading-none">{totalLlamadas}</p>
+                <p className="text-sm text-ink-soft font-medium mt-0.5 leading-tight">Llamadas pendientes</p>
               </div>
+            </Link>
+
+            <Link href="/prospectos" className="lumo-card px-3.5 py-3 hover:border-azul transition-colors flex items-center gap-3">
+              <Icon name="user" size={22} className="text-azul shrink-0" />
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-ink tracking-tighter leading-none">{totalProspectos}</p>
+                <p className="text-sm text-ink-soft font-medium mt-0.5 leading-tight">Prospectos activos</p>
+              </div>
+            </Link>
+
+            <Link href="/clientes" className="col-span-2 bg-azul px-4 py-3 rounded-2xl shadow-sm hover:bg-azul-dark transition-colors flex items-center gap-3">
+              <Icon name="refresh" size={22} className="text-white/80 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-2xl font-bold text-white tracking-tighter leading-none">{totalRenovaciones}</p>
+                <p className="text-sm text-white/80 font-medium mt-0.5 leading-tight">Renovaciones en 30 días</p>
+              </div>
+              <p className="text-azul text-xs font-bold uppercase tracking-wider bg-card px-3 py-1.5 rounded-full shrink-0">Atender</p>
             </Link>
 
           </div>
@@ -369,38 +368,38 @@ export default function Home() {
 
         {/* Navegación Rápida (Diario) */}
         <div>
-          <h2 className="lumo-section-title mb-4 px-1">Tu Diario</h2>
+          <h2 className="lumo-section-title mb-2 px-1">Tu Diario</h2>
           <div className="lumo-card divide-y divide-ink/5 overflow-hidden">
-            <Link href="/ventas" className="flex items-center justify-between p-4 hover:bg-paper transition-colors">
-              <div className="flex items-center gap-4">
+            <Link href="/ventas" className="flex items-center justify-between px-3.5 py-3 hover:bg-paper transition-colors">
+              <div className="flex items-center gap-3">
                 <Icon name="ventas" size={22} className="text-ink" />
                 <span className="font-semibold text-ink">Ventas y Cotizaciones</span>
               </div>
               <Icon name="arrow" size={16} className="text-ink-faint" />
             </Link>
-            <Link href="/clientes" className="flex items-center justify-between p-4 hover:bg-paper transition-colors">
-              <div className="flex items-center gap-4">
+            <Link href="/clientes" className="flex items-center justify-between px-3.5 py-3 hover:bg-paper transition-colors">
+              <div className="flex items-center gap-3">
                 <Icon name="clientes" size={22} className="text-ink" />
                 <span className="font-semibold text-ink">Clientes</span>
               </div>
               <Icon name="arrow" size={16} className="text-ink-faint" />
             </Link>
-            <Link href="/tramites" className="flex items-center justify-between p-4 hover:bg-paper transition-colors">
-              <div className="flex items-center gap-4">
+            <Link href="/tramites" className="flex items-center justify-between px-3.5 py-3 hover:bg-paper transition-colors">
+              <div className="flex items-center gap-3">
                 <Icon name="doc" size={22} className="text-ink" />
                 <span className="font-semibold text-ink">Trámites</span>
               </div>
               <Icon name="arrow" size={16} className="text-ink-faint" />
             </Link>
-            <Link href="/metricas" className="flex items-center justify-between p-4 hover:bg-paper transition-colors">
-              <div className="flex items-center gap-4">
+            <Link href="/metricas" className="flex items-center justify-between px-3.5 py-3 hover:bg-paper transition-colors">
+              <div className="flex items-center gap-3">
                 <Icon name="chart" size={22} className="text-ink" />
                 <span className="font-semibold text-ink">Métricas</span>
               </div>
               <Icon name="arrow" size={16} className="text-ink-faint" />
             </Link>
           </div>
-          <p className="font-hand text-lg text-ink-soft text-center mt-5">
+          <p className="font-hand text-base text-ink-soft text-center mt-3">
             menos ruido. más claridad. <span className="lumo-underline">más tú.</span>
           </p>
         </div>
