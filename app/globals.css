@@ -40,6 +40,24 @@ html, body {
   max-width: 100vw;
 }
 
+/* ── Candado de ancho móvil ──────────────────────────────────
+   El body es una columna flex: sus hijos (las pantallas) tienen
+   min-width:auto y cualquier contenido sin salto de línea puede
+   inflar la página más allá del viewport. Esto lo prohíbe:
+   toda pantalla mide EXACTAMENTE el ancho del teléfono. */
+body > * {
+  width: 100%;
+  min-width: 0;
+  max-width: 100vw;
+}
+main, header, nav, section {
+  max-width: 100%;
+  min-width: 0;
+}
+img, svg, video, table {
+  max-width: 100%;
+}
+
 html { color-scheme: dark; }
 
 body {

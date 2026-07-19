@@ -159,7 +159,7 @@ export function ProcessTabs<T extends string>({ tabs, activa, onCambiar, alerta 
   alerta?: T; /* tab que se pinta rojo cuando tiene elementos (ej. Vencidas) */
 }) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto px-4 py-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none]">
+    <div className="flex flex-wrap gap-1.5 px-4 py-2 max-w-full">
       {tabs.map(t => {
         const esAlerta = alerta === t.id && t.n > 0;
         const activo = activa === t.id;
@@ -167,7 +167,7 @@ export function ProcessTabs<T extends string>({ tabs, activa, onCambiar, alerta 
           <button
             key={t.id}
             onClick={() => onCambiar(t.id)}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
               activo
                 ? esAlerta ? 'bg-rojo text-white' : 'bg-azul text-white'
                 : 'bg-card text-ink-soft border border-ink/10'
@@ -212,9 +212,9 @@ export function EncabezadoModulo({ titulo, accion, children }: {
 }) {
   return (
     <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur-md border-b border-ink/10">
-      <header className="px-4 pt-5 pb-2 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-ink tracking-tight">{titulo}</h1>
-        {accion}
+      <header className="px-4 pt-5 pb-2 flex justify-between items-center gap-2 flex-wrap">
+        <h1 className="text-3xl font-bold text-ink tracking-tight min-w-0">{titulo}</h1>
+        <div className="shrink-0">{accion}</div>
       </header>
       {children}
     </div>
