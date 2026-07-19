@@ -94,7 +94,6 @@ function Formulario({ config }: { config: LandingConfig }) {
   if (enviado) {
     return (
       <div className="lumo-card relative p-8 text-center">
-        <span className="lumo-tape"></span>
         <div className="w-14 h-14 bg-verde-soft text-verde rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Icon name="check" size={30} />
         </div>
@@ -109,7 +108,6 @@ function Formulario({ config }: { config: LandingConfig }) {
 
   return (
     <form onSubmit={enviar} className="lumo-card relative p-6 space-y-4">
-      <span className="lumo-tape"></span>
 
       <div>
         <label className="block text-sm font-semibold text-ink-soft mb-1">

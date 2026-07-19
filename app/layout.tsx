@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Tu cuaderno. Tu diario. Tus recordatorios. Tu foco.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "LUMO",
   },
 };
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // respeta el notch y el home indicator del iPhone
-  themeColor: "#F5F1E8",
+  themeColor: "#0D0D0D",
 };
 
 export default function RootLayout({

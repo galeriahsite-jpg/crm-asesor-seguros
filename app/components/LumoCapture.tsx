@@ -483,7 +483,6 @@ export default function LumoCapture() {
 
                 {mensajesGenerados.map((m, i) => (
                   <div key={i} className="lumo-card lumo-lines p-4 relative">
-                    <span className="lumo-tape"></span>
                     <p className="text-xs font-bold uppercase tracking-wide text-ink-faint mb-1">Mensaje para {m.nombre}</p>
                     <p className="text-ink text-sm whitespace-pre-wrap">{m.mensaje}</p>
                     <div className="flex gap-2 mt-3">

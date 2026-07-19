@@ -26,6 +26,7 @@ export default function Diagnosticos() {
   const [nota, setNota] = useState('');
   const [diagnosticos, setDiagnosticos] = useState<Diagnostico[]>([]);
   const [busqueda, setBusqueda] = useState('');
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   const [personas, setPersonas] = useState<any[]>([]);
   const [personaSeleccionada, setPersonaSeleccionada] = useState<{id: string, tipo: string, nombre: string} | null>(null);
@@ -142,8 +143,11 @@ export default function Diagnosticos() {
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">detección de necesidades</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Diagnósticos</h1>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">Diagnósticos</h1>
         </div>
+        <button onClick={() => setMostrarForm(!mostrarForm)} className={`text-sm px-3.5 py-2 rounded-xl font-semibold flex items-center gap-1.5 transition-colors mb-1 ${mostrarForm ? 'bg-elevada text-ink border border-ink/15' : 'lumo-btn-primary'}`}>
+          <Icon name="plus" size={15} /> {mostrarForm ? 'Cerrar' : 'Nuevo'}
+        </button>
         <Link href="/ventas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
@@ -154,8 +158,8 @@ export default function Diagnosticos() {
 
       <main className="p-4 space-y-5">
 
+{mostrarForm && (
         <form onSubmit={guardarDiagnostico} className="lumo-card relative p-5 space-y-4">
-          <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
             <Icon name="note" size={18} className="text-azul" /> Nuevo Diagnóstico
           </h2>
@@ -203,6 +207,7 @@ export default function Diagnosticos() {
 
           <button type="submit" className="w-full lumo-btn-primary py-3">Guardar Diagnóstico</button>
         </form>
+        )}
 
         <div className="mb-4">
           <h2 className="lumo-section-title mb-3">Historial</h2>

@@ -65,7 +65,6 @@ function FormularioSolicitud() {
   if (enviado) {
     return (
       <div className="lumo-card relative p-8 text-center">
-        <span className="lumo-tape"></span>
         <div className="w-14 h-14 bg-verde-soft text-verde rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Icon name="check" size={30} />
         </div>
@@ -80,7 +79,6 @@ function FormularioSolicitud() {
 
   return (
     <form onSubmit={enviar} className="lumo-card relative p-6 space-y-4">
-      <span className="lumo-tape"></span>
 
       <div>
         <label className="block text-sm font-semibold text-ink-soft mb-1">Tu nombre</label>
@@ -169,7 +167,7 @@ export default function Solicitud() {
           <Icon name="shield" size={28} />
         </div>
         <p className="font-hand text-xl text-ink-soft leading-none mb-2">protege lo que más importa</p>
-        <h1 className="text-2xl font-bold text-ink tracking-tight">
+        <h1 className="text-3xl font-bold text-ink tracking-tight">
           Solicita información en menos de un minuto
         </h1>
         <p className="text-ink-soft mt-3">

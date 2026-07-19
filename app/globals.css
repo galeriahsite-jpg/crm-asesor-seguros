@@ -2,28 +2,34 @@
 @import "tailwindcss";
 
 /* ==========================================================
-   LUMO Design System
-   Paleta: Azul (foco) · Rojo (alerta) · Negro (estructura) · Crema (espacio)
+   LUMO Design System · Oscuro único
+   4 colores: Negro (estructura) · Blanco (lectura)
+   · Azul (acción/activo) · Rojo (alerta/vencido)
    ========================================================== */
 
 @theme {
-  --color-paper: #F5F1E8;
-  --color-card: #FFFDF8;
-  --color-ink: #141414;
-  --color-ink-soft: #57534A;
-  --color-ink-faint: #837C6A;
-  --color-linea: #E4DECF;
+  /* Negro: estructura y fondos (3 niveles del mismo negro) */
+  --color-paper: #0D0D0D;      /* fondo principal */
+  --color-card: #171715;       /* superficie */
+  --color-elevada: #211F1C;    /* superficie elevada */
+  --color-ink: #F5F3EE;        /* texto principal */
+  --color-ink-soft: rgba(245, 243, 238, 0.68);  /* secundario */
+  --color-ink-faint: rgba(245, 243, 238, 0.38); /* desactivado */
+  --color-linea: rgba(245, 243, 238, 0.09);
 
-  --color-azul: #1F3FD8;
-  --color-azul-dark: #16309F;
-  --color-azul-soft: #E7EBFA;
+  /* Azul: acción principal, proceso activo, selección, positivo */
+  --color-azul: #2563EB;
+  --color-azul-dark: #1D4ED8;
+  --color-azul-soft: rgba(37, 99, 235, 0.16);
 
-  --color-rojo: #E0342B;
-  --color-rojo-dark: #B32620;
-  --color-rojo-soft: #FBE9E6;
+  /* Rojo: alerta, vencido, eliminar, urgente */
+  --color-rojo: #EF4444;
+  --color-rojo-dark: #DC2626;
+  --color-rojo-soft: rgba(239, 68, 68, 0.14);
 
-  --color-verde: #1E7F4F;
-  --color-verde-soft: #E4F1E9;
+  /* Verde eliminado del sistema: lo positivo es azul */
+  --color-verde: #2563EB;
+  --color-verde-soft: rgba(37, 99, 235, 0.16);
 
   --font-sans: "Instrument Sans", system-ui, sans-serif;
   --font-hand: "Caveat", cursive;
@@ -34,14 +40,16 @@ html, body {
   max-width: 100vw;
 }
 
+html { color-scheme: dark; }
+
 body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* textura de papel muy sutil */
-  background-image: radial-gradient(rgba(20, 20, 20, 0.025) 1px, transparent 1px);
+  /* textura de puntos muy sutil */
+  background-image: radial-gradient(rgba(245, 243, 238, 0.03) 1px, transparent 1px);
   background-size: 22px 22px;
 }
 
@@ -50,9 +58,7 @@ body {
   background: transparent;
 }
 
-/* ── Sensación nativa: respuesta táctil inmediata ────────────
-   En móvil no existe hover; todo elemento presionable responde
-   al toque con una leve compresión, como en iOS. */
+/* ── Respuesta táctil inmediata (estilo iOS) ── */
 button:active,
 a:active,
 .lumo-btn-primary:active,
@@ -73,41 +79,7 @@ select:active { transform: none; }
   to   { transform: translateY(0); opacity: 1; }
 }
 
-/* ── Modo oscuro: "papel nocturno" ──────────────────────────
-   Mismo cuaderno, luz apagada. Respeta la preferencia del
-   sistema sin configuración extra. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: #191713;
-    --color-card: #23201B;
-    --color-ink: #EDE9DE;
-    --color-ink-soft: #B5AF9F;
-    --color-ink-faint: #7E7868;
-    --color-linea: #35312A;
-    --color-azul: #6D87F5;
-    --color-azul-dark: #8CA0F7;
-    --color-azul-soft: #232A45;
-    --color-rojo: #F0655C;
-    --color-rojo-dark: #F4837B;
-    --color-rojo-soft: #3A2523;
-    --color-verde: #58B586;
-    --color-verde-soft: #1F3229;
-  }
-  body {
-    background-image: radial-gradient(rgba(237, 233, 222, 0.03) 1px, transparent 1px);
-  }
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #EDE9DE;
-    -webkit-box-shadow: 0 0 0px 1000px #23201B inset;
-  }
-}
-
-/* ── Anti-zoom en móvil ──────────────────────────────────────
-   iOS Safari hace zoom automático cuando un input tiene fuente
-   menor a 16px. Forzamos 16px en todos los campos en pantallas
-   móviles para eliminar los saltos al escribir. */
+/* ── Anti-zoom en móvil (iOS hace zoom con fuentes <16px) ── */
 @media (max-width: 640px) {
   input, select, textarea {
     font-size: 16px !important;
@@ -117,33 +89,32 @@ select:active { transform: none; }
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: none;
+  filter: invert(0.85);
 }
 
 select, select option {
-  background-color: var(--color-card);
+  background-color: var(--color-elevada);
   color: var(--color-ink);
 }
 
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #141414;
-  -webkit-box-shadow: 0 0 0px 1000px #FFFDF8 inset;
+  -webkit-text-fill-color: #F5F3EE;
+  -webkit-box-shadow: 0 0 0px 1000px #211F1C inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
 @layer components {
 
-  /* Tarjeta blanca sobre papel */
+  /* Superficie sobre fondo */
   .lumo-card {
     background-color: var(--color-card);
-    border: 1px solid rgba(20, 20, 20, 0.1);
+    border: 1px solid rgba(245, 243, 238, 0.08);
     border-radius: 1.1rem;
-    box-shadow: 0 1px 2px rgba(20, 20, 20, 0.05);
   }
 
-  /* Tarjeta con renglones de cuaderno */
+  /* Renglones sutiles (solo decorativo en estados vacíos) */
   .lumo-lines {
     background-image: repeating-linear-gradient(
       transparent,
@@ -156,11 +127,11 @@ input:-webkit-autofill:focus {
   /* Inputs */
   .lumo-input {
     width: 100%;
-    min-width: 0; /* los flex no lo empujan fuera de pantalla */
+    min-width: 0;
     font-size: 1rem; /* ≥16px: evita el zoom automático de iOS */
-    padding: 0.55rem 0.75rem;
-    background-color: var(--color-card);
-    border: 1px solid rgba(20, 20, 20, 0.15);
+    padding: 0.6rem 0.8rem;
+    background-color: var(--color-elevada);
+    border: 1px solid rgba(245, 243, 238, 0.12);
     border-radius: 0.75rem;
     color: var(--color-ink);
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -169,14 +140,14 @@ input:-webkit-autofill:focus {
   .lumo-input:focus {
     outline: none;
     border-color: var(--color-azul);
-    box-shadow: 0 0 0 3px rgba(31, 63, 216, 0.12);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
   }
 
-  /* Botones */
+  /* Botones — texto seminegrita */
   .lumo-btn-primary {
     background-color: var(--color-azul);
     color: #ffffff;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 0.75rem;
     transition: background-color 0.15s;
   }
@@ -185,7 +156,7 @@ input:-webkit-autofill:focus {
   .lumo-btn-danger {
     background-color: var(--color-rojo);
     color: #ffffff;
-    font-weight: 700;
+    font-weight: 600;
     border-radius: 0.75rem;
     transition: background-color 0.15s;
   }
@@ -195,13 +166,13 @@ input:-webkit-autofill:focus {
     background-color: transparent;
     color: var(--color-ink-soft);
     font-weight: 500;
-    border: 1px solid rgba(20, 20, 20, 0.15);
+    border: 1px solid rgba(245, 243, 238, 0.16);
     border-radius: 0.75rem;
     transition: background-color 0.15s;
   }
-  .lumo-btn-ghost:hover { background-color: rgba(20, 20, 20, 0.04); }
+  .lumo-btn-ghost:hover { background-color: rgba(245, 243, 238, 0.06); }
 
-  /* Chips / etiquetas tipo pestaña (HOY, NOTAS, DIARIO...) */
+  /* Chips / estados */
   .lumo-chip {
     display: inline-flex;
     align-items: center;
@@ -212,38 +183,25 @@ input:-webkit-autofill:focus {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    background-color: var(--color-card);
+    background-color: var(--color-elevada);
     color: var(--color-ink-soft);
-    border: 1px solid rgba(20, 20, 20, 0.12);
+    border: 1px solid rgba(245, 243, 238, 0.12);
     transition: all 0.15s;
   }
   .lumo-chip-azul { background-color: var(--color-azul); color: #fff; border-color: var(--color-azul); }
   .lumo-chip-rojo { background-color: var(--color-rojo); color: #fff; border-color: var(--color-rojo); }
-  .lumo-chip-negro { background-color: var(--color-ink); color: #fff; border-color: var(--color-ink); }
+  .lumo-chip-negro { background-color: var(--color-elevada); color: var(--color-ink); border-color: rgba(245, 243, 238, 0.2); }
 
-  /* Cinta adhesiva roja (detalle decorativo) */
-  .lumo-tape {
-    position: absolute;
-    top: -8px;
-    right: 18px;
-    width: 34px;
-    height: 16px;
-    background-color: var(--color-rojo);
-    opacity: 0.85;
-    border-radius: 2px;
-    transform: rotate(3deg);
-  }
-
-  /* Título de sección estilo rotulador */
+  /* Título de sección: 13px seminegrita mayúsculas, contraste alto */
   .lumo-section-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--color-ink-faint);
+    color: var(--color-ink-soft);
   }
 
-  /* Texto manuscrito */
+  /* Texto manuscrito: SOLO frases de marca y estados vacíos */
   .font-hand {
     font-family: var(--font-hand);
   }

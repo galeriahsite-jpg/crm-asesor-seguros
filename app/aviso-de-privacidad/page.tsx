@@ -12,7 +12,7 @@ const VERSION = '2026-07';
 export default function AvisoDePrivacidad() {
   return (
     <div className="min-h-screen max-w-md mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold text-ink tracking-tight">Aviso de Privacidad</h1>
+      <h1 className="text-3xl font-bold text-ink tracking-tight">Aviso de Privacidad</h1>
       <p className="text-sm text-ink-faint mt-1">Versión {VERSION}</p>
 
       <div className="lumo-card p-6 mt-6 space-y-4 text-sm text-ink-soft leading-relaxed">

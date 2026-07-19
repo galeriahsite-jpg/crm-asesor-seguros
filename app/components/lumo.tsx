@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 /* ============================================================
    LUMO · Iconos de línea (SVG stroke, estilo cuaderno)
@@ -96,10 +97,9 @@ export function BottomNav() {
 }
 
 /* ============================================================
-   LUMO · Flujo de proceso
-   Cada módulo muestra en qué paso del proceso comercial vive,
-   qué se hace ahí y qué sigue. El proceso es siempre el mismo:
-   Captar → Contactar → Diagnosticar → Cotizar → Cerrar → Cuidar
+   LUMO · Flujo de proceso (compat)
+   Las pantallas rediseñadas usan ProcessTabs; esta tira queda
+   para páginas que aún no migran.
    ============================================================ */
 
 const ETAPAS_PROCESO = ['Captar', 'Contactar', 'Diagnosticar', 'Cotizar', 'Cerrar', 'Cuidar'];
@@ -137,10 +137,179 @@ export function PageHeader({ titulo, subtitulo, children }: {
     <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
       <div>
         {subtitulo && <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">{subtitulo}</p>}
-        <h1 className="text-2xl font-bold text-ink tracking-tight">{titulo}</h1>
+        <h1 className="text-3xl font-bold text-ink tracking-tight">{titulo}</h1>
       </div>
       {children && <div className="flex gap-2 items-center pb-1">{children}</div>}
     </header>
+  );
+}
+
+/* ============================================================
+   LUMO · Sistema de listas escalables
+   Un solo patrón para todos los módulos:
+   Encabezado fijo (título + acción) → Tabs de proceso con
+   conteos → Búsqueda → Filas compactas → Mostrar más.
+   ============================================================ */
+
+/* Tabs segmentados con conteo. El orden ES el proceso. */
+export function ProcessTabs<T extends string>({ tabs, activa, onCambiar, alerta }: {
+  tabs: { id: T; letra: string; titulo: string; n: number }[];
+  activa: T;
+  onCambiar: (id: T) => void;
+  alerta?: T; /* tab que se pinta rojo cuando tiene elementos (ej. Vencidas) */
+}) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto px-4 py-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none]">
+      {tabs.map(t => {
+        const esAlerta = alerta === t.id && t.n > 0;
+        const activo = activa === t.id;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onCambiar(t.id)}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activo
+                ? esAlerta ? 'bg-rojo text-white' : 'bg-azul text-white'
+                : 'bg-card text-ink-soft border border-ink/10'
+            }`}
+          >
+            <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${
+              activo ? 'bg-white/20 text-white' : esAlerta ? 'bg-rojo text-white' : 'bg-elevada text-ink-soft'
+            }`}>{t.letra} {t.n}</span>
+            {t.titulo}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Búsqueda fija bajo el encabezado */
+export function Buscador({ valor, onCambiar, placeholder = 'Buscar…' }: {
+  valor: string; onCambiar: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div className="px-4 pb-2">
+      <div className="relative">
+        <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+        <input
+          type="search"
+          value={valor}
+          onChange={e => onCambiar(e.target.value)}
+          placeholder={placeholder}
+          className="lumo-input pl-10 py-2.5 text-sm rounded-xl"
+        />
+      </div>
+    </div>
+  );
+}
+
+/* Zona superior fija: título + acción, tabs y búsqueda en un solo bloque sticky */
+export function EncabezadoModulo({ titulo, accion, children }: {
+  titulo: string;
+  accion?: React.ReactNode; /* botón + Nuevo */
+  children?: React.ReactNode; /* ProcessTabs + Buscador */
+}) {
+  return (
+    <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur-md border-b border-ink/10">
+      <header className="px-4 pt-5 pb-2 flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-ink tracking-tight">{titulo}</h1>
+        {accion}
+      </header>
+      {children}
+    </div>
+  );
+}
+
+/* Etiqueta de estado con significado fijo:
+   rojo = alerta/vencido · azul = activo/proceso · neutro = informativo */
+export function Badge({ children, tono = 'neutro' }: {
+  children: React.ReactNode; tono?: 'rojo' | 'azul' | 'neutro';
+}) {
+  const estilos = {
+    rojo: 'bg-rojo-soft text-rojo border-rojo/25',
+    azul: 'bg-azul-soft text-azul border-azul/25',
+    neutro: 'bg-elevada text-ink-soft border-ink/10',
+  };
+  return (
+    <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md border ${estilos[tono]}`}>
+      {children}
+    </span>
+  );
+}
+
+/* Fila compacta universal: [nombre + línea secundaria + próxima acción] › */
+export function FilaRegistro({ nombre, secundario, accion, accionTono = 'neutro', badge, badgeTono, onAbrir, extremo }: {
+  nombre: string;
+  secundario?: React.ReactNode;   /* Auto · 899 458 2128 */
+  accion?: React.ReactNode;       /* Contactar hoy */
+  accionTono?: 'rojo' | 'azul' | 'neutro';
+  badge?: React.ReactNode;        /* NUEVO / RENOVACIÓN · 18 DÍAS */
+  badgeTono?: 'rojo' | 'azul' | 'neutro';
+  onAbrir?: () => void;
+  extremo?: React.ReactNode;      /* botón WhatsApp u otro, no navega */
+}) {
+  const tonoAccion = accionTono === 'rojo' ? 'text-rojo' : accionTono === 'azul' ? 'text-azul' : 'text-ink-soft';
+  return (
+    <div className="flex items-center bg-card active:bg-elevada transition-colors">
+      <button onClick={onAbrir} className="flex-1 min-w-0 text-left px-4 py-3">
+        {badge && <div className="mb-1"><Badge tono={badgeTono}>{badge}</Badge></div>}
+        <p className="text-base font-semibold text-ink truncate">{nombre}</p>
+        {secundario && <p className="text-sm text-ink-soft truncate mt-0.5">{secundario}</p>}
+        {accion && <p className={`text-sm font-semibold mt-0.5 ${tonoAccion}`}>{accion}</p>}
+      </button>
+      {extremo && <div className="shrink-0 pr-2">{extremo}</div>}
+      {onAbrir && (
+        <button onClick={onAbrir} className="shrink-0 px-3 py-4 text-ink-faint" aria-label={`Abrir ${nombre}`}>
+          <Icon name="arrow" size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Contenedor de filas: tarjeta única con divisiones */
+export function ListaFilas({ children }: { children: React.ReactNode }) {
+  return <div className="lumo-card overflow-hidden divide-y divide-ink/5">{children}</div>;
+}
+
+/* Botón de carga incremental (20 en 20, predecible) */
+export function CargarMas({ visibles, total, onMas, paso = 20 }: {
+  visibles: number; total: number; onMas: () => void; paso?: number;
+}) {
+  if (visibles >= total) return null;
+  return (
+    <button onClick={onMas} className="w-full lumo-btn-ghost py-3 text-sm font-semibold">
+      Mostrar {Math.min(paso, total - visibles)} más ({total - visibles} restantes)
+    </button>
+  );
+}
+
+/* Sección colapsable con conteo: cerrada y compacta cuando está vacía */
+export function SeccionColapsable({ titulo, n, abiertaInicial, children }: {
+  titulo: string; n: number; abiertaInicial?: boolean; children: React.ReactNode;
+}) {
+  const [abierta, setAbierta] = useState(abiertaInicial ?? n > 0);
+  return (
+    <div className="lumo-card overflow-hidden">
+      <button
+        onClick={() => setAbierta(a => !a)}
+        className="w-full flex items-center justify-between px-4 py-3"
+      >
+        <span className="lumo-section-title">{titulo} · {n}</span>
+        <Icon name="arrow" size={14} className={`text-ink-faint transition-transform ${abierta ? 'rotate-90' : ''}`} />
+      </button>
+      {abierta && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
+/* Estado vacío: única casa permitida de la cursiva dentro de listas */
+export function EstadoVacio({ texto }: { texto: string }) {
+  return (
+    <div className="lumo-card lumo-lines p-6 border-dashed text-center">
+      <p className="font-hand text-xl text-ink-soft">{texto}</p>
+    </div>
   );
 }
 

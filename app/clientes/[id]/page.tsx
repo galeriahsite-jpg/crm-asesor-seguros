@@ -2,8 +2,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
-import { BottomNav, Icon, SkeletonPantalla } from '../../components/lumo';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { BottomNav, Icon, SkeletonPantalla, SeccionColapsable } from '../../components/lumo';
+import TelefonoInput from '../../components/TelefonoInput';
+import { validarTelefonoOpcional, type PaisTelefono } from '../../lib/telefono';
 import {
   registrarActividad, tiempoTranscurrido,
   ETIQUETAS_ACTIVIDAD, type Actividad,
@@ -20,6 +22,7 @@ type Servicio = { id: string; tipo: string; descripcion: string; estado: string 
 export default function ExpedienteCliente() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const clienteId = params.id as string;
 
   const [cliente, setCliente] = useState<any>(null);
@@ -43,6 +46,12 @@ export default function ExpedienteCliente() {
 
   const [sTipo, setSTipo] = useState('Duda sobre póliza');
   const [sDesc, setSDesc] = useState('');
+
+  // Edición de datos del cliente (vive en la ficha)
+  const [editando, setEditando] = useState(false);
+  const [eNombre, setENombre] = useState('');
+  const [eTelefono, setETelefono] = useState('');
+  const [ePais, setEPais] = useState<PaisTelefono>('MX');
 
   useEffect(() => {
     if (clienteId) {
@@ -154,22 +163,60 @@ export default function ExpedienteCliente() {
     }
   }
 
+  function iniciarEdicion() {
+    setENombre(cliente?.nombre || '');
+    setETelefono(cliente?.telefono || '');
+    setEPais(cliente?.telefono_pais === 'US' ? 'US' : 'MX');
+    setEditando(true);
+  }
+
+  async function guardarEdicion(e: React.FormEvent) {
+    e.preventDefault();
+    const tel = validarTelefonoOpcional(eTelefono, ePais);
+    if (!tel.ok) { toast(tel.error); return; }
+    const { error } = await supabase.from('clientes')
+      .update({ nombre: eNombre, telefono: tel.telefono, telefono_pais: tel.telefono ? ePais : null })
+      .eq('id', clienteId);
+    if (error) toast('Error al guardar la edición');
+    else { setEditando(false); toast('Datos actualizados', 'exito'); cargarExpediente(clienteId); }
+  }
+
+  async function eliminarCliente() {
+    if (!(await confirmarLumo({ titulo: 'Eliminar cliente', mensaje: 'Se eliminará el cliente y sus pólizas de referencia. Esta acción no se puede deshacer.', textoAceptar: 'Eliminar', peligro: true }))) return;
+    const { error } = await supabase.from('clientes').delete().eq('id', clienteId);
+    if (error) toast('Error al eliminar');
+    else router.push('/clientes');
+  }
+
   if (cargando) return <SkeletonPantalla titulo="Expediente" />;
+
+  // Próxima renovación (la fecha que importa del expediente)
+  const hoyMs = new Date().setHours(0, 0, 0, 0);
+  const proximaRenovacion = polizas
+    .map(p => p.vencimiento)
+    .filter(Boolean)
+    .sort()[0];
+  const diasRenovacion = proximaRenovacion
+    ? Math.round((new Date(proximaRenovacion + 'T00:00:00').getTime() - hoyMs) / 86400000)
+    : null;
+  const servicioAbierto = servicios.find(s => s.estado !== 'Resuelto' && s.estado !== 'Cerrado');
 
   return (
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">historial completo</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Expediente 360°</h1>
+          <h1 className="text-2xl font-bold text-ink tracking-tight truncate max-w-[220px]">{cliente?.nombre || 'Expediente'}</h1>
+          <p className="text-xs text-ink-soft mt-0.5">Cliente · {polizas.length} póliza{polizas.length === 1 ? '' : 's'}</p>
         </div>
         <Link href="/clientes" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
       <main className="p-4 space-y-5">
 
+        {/* ── A · RESUMEN ── */}
+        <h2 className="lumo-section-title px-1">A · Resumen</h2>
+
         <div className="lumo-card relative p-5">
-          <span className="lumo-tape"></span>
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-xl font-bold text-ink">{cliente?.nombre}</h2>
@@ -179,6 +226,22 @@ export default function ExpedienteCliente() {
             </div>
             {cliente?.telefono && (
               <a href={enlaceWhatsApp(cliente.telefono, cliente.telefono_pais)} target="_blank" rel="noopener noreferrer" className="text-verde text-xs bg-verde-soft px-3 py-2 rounded-md border border-verde/25 font-semibold hover:bg-verde hover:text-white transition-colors">WhatsApp</a>            )}
+          </div>
+
+          <div className="mt-3 space-y-1">
+            {diasRenovacion !== null && (
+              <p className={`text-sm font-semibold ${diasRenovacion <= 30 ? 'text-rojo' : 'text-ink-soft'}`}>
+                {diasRenovacion < 0
+                  ? `Póliza vencida hace ${-diasRenovacion} día${diasRenovacion === -1 ? '' : 's'} (${formatearFecha(proximaRenovacion)})`
+                  : `Renovación en ${diasRenovacion} día${diasRenovacion === 1 ? '' : 's'} · ${formatearFecha(proximaRenovacion)}`}
+              </p>
+            )}
+            {servicioAbierto && (
+              <p className="text-sm font-semibold text-rojo">Servicio pendiente: {servicioAbierto.tipo}</p>
+            )}
+            {diasRenovacion === null && !servicioAbierto && (
+              <p className="text-sm text-ink-soft">Sin póliza registrada: completa el expediente.</p>
+            )}
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -239,8 +302,8 @@ export default function ExpedienteCliente() {
           </form>
         )}
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Pólizas Contratadas</h3>
+        {/* ── B–E · EXPEDIENTE ── */}
+        <SeccionColapsable titulo="B · Pólizas" n={polizas.length}>
           <div className="space-y-2">
             {polizas.map(p => (
               <div key={p.id} className="lumo-card p-3 text-sm">
@@ -252,12 +315,11 @@ export default function ExpedienteCliente() {
                 <p className="text-sm text-rojo mt-1 font-semibold">Vence: {formatearFecha(p.vencimiento)}</p>
               </div>
             ))}
-            {polizas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin pólizas registradas</p>}
+            {polizas.length === 0 && <p className="font-hand text-lg text-ink-soft">sin pólizas registradas</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Cotizaciones y Ventas</h3>
+        <SeccionColapsable titulo="Cotizaciones y ventas" n={oportunidades.length} abiertaInicial={false}>
           <div className="space-y-2">
             {oportunidades.map(o => (
               <div key={o.id} className="lumo-card p-3 text-sm flex justify-between items-center">
@@ -268,12 +330,11 @@ export default function ExpedienteCliente() {
                 <span className="lumo-chip lumo-chip-azul">{o.estado}</span>
               </div>
             ))}
-            {oportunidades.length === 0 && <p className="font-hand text-lg text-ink-faint">sin cotizaciones registradas</p>}
+            {oportunidades.length === 0 && <p className="font-hand text-lg text-ink-soft">sin cotizaciones registradas</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Historial de Citas</h3>
+        <SeccionColapsable titulo="D · Citas" n={citas.length}>
           <div className="space-y-2">
             {citas.map(c => (
               <div key={c.id} className="lumo-card p-3 text-sm flex justify-between items-center">
@@ -284,14 +345,13 @@ export default function ExpedienteCliente() {
                 <span className="lumo-chip">{c.estado}</span>
               </div>
             ))}
-            {citas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin citas registradas</p>}
+            {citas.length === 0 && <p className="font-hand text-lg text-ink-soft">sin citas registradas</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
         {/* ── Línea de tiempo universal ── */}
-        <div>
-          <h3 className="lumo-section-title mb-3">Línea de Tiempo</h3>
-          <div className="lumo-card divide-y divide-ink/5">
+        <SeccionColapsable titulo="E · Actividad" n={actividades.length} abiertaInicial={false}>
+          <div className="divide-y divide-ink/5">
             {actividades.map(a => (
               <div key={a.id} className="p-3 text-sm flex gap-3 items-start">
                 <span className="w-2 h-2 rounded-full bg-azul mt-1.5 shrink-0"></span>
@@ -303,13 +363,12 @@ export default function ExpedienteCliente() {
               </div>
             ))}
             {actividades.length === 0 && (
-              <p className="font-hand text-lg text-ink-faint p-4">aún no hay actividad registrada</p>
+              <p className="font-hand text-lg text-ink-soft p-4">aún no hay actividad registrada</p>
             )}
           </div>
-        </div>
+        </SeccionColapsable>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Servicios y Siniestros</h3>
+        <SeccionColapsable titulo="C · Servicios y siniestros" n={servicios.length}>
           <div className="space-y-2">
             {servicios.map(s => (
               <div key={s.id} className="lumo-card p-3 text-sm">
@@ -320,8 +379,28 @@ export default function ExpedienteCliente() {
                 <p className="text-sm text-ink-soft">{s.descripcion}</p>
               </div>
             ))}
-            {servicios.length === 0 && <p className="font-hand text-lg text-ink-faint">sin servicios registrados</p>}
+            {servicios.length === 0 && <p className="font-hand text-lg text-ink-soft">sin servicios registrados</p>}
           </div>
+        </SeccionColapsable>
+
+        {/* ── Datos del registro: editar / eliminar ── */}
+        <div className="lumo-card p-4">
+          {editando ? (
+            <form onSubmit={guardarEdicion} className="space-y-3">
+              <p className="lumo-section-title">Editar datos</p>
+              <input type="text" value={eNombre} onChange={(e) => setENombre(e.target.value)} required className="lumo-input" placeholder="Nombre completo" />
+              <TelefonoInput value={eTelefono} onChange={setETelefono} pais={ePais} onChangePais={setEPais} />
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 lumo-btn-primary py-2 text-sm">Guardar Cambios</button>
+                <button type="button" onClick={() => setEditando(false)} className="flex-1 lumo-btn-ghost py-2 text-sm">Cancelar</button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={iniciarEdicion} className="flex-1 lumo-btn-ghost py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="edit" size={15} /> Editar datos</button>
+              <button onClick={eliminarCliente} className="flex-1 lumo-btn-ghost py-2.5 text-sm text-rojo border-rojo/25 flex items-center justify-center gap-1.5"><Icon name="trash" size={15} /> Eliminar</button>
+            </div>
+          )}
         </div>
 
       </main>

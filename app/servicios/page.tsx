@@ -21,6 +21,7 @@ export default function Servicios() {
   const [nota, setNota] = useState('');
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [busqueda, setBusqueda] = useState('');
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editTipo, setEditTipo] = useState('');
@@ -121,8 +122,11 @@ export default function Servicios() {
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">acompañamiento post-venta</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Servicio y Siniestros</h1>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">Servicio y Siniestros</h1>
         </div>
+        <button onClick={() => setMostrarForm(!mostrarForm)} className={`text-sm px-3.5 py-2 rounded-xl font-semibold flex items-center gap-1.5 transition-colors mb-1 ${mostrarForm ? 'bg-elevada text-ink border border-ink/15' : 'lumo-btn-primary'}`}>
+          <Icon name="plus" size={15} /> {mostrarForm ? 'Cerrar' : 'Nueva'}
+        </button>
         <Link href="/clientes" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
@@ -132,8 +136,8 @@ export default function Servicios() {
       />
 
       <main className="p-4 space-y-5">
+{mostrarForm && (
         <form onSubmit={guardarServicio} className="lumo-card relative p-5 space-y-4">
-          <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
             <Icon name="heart" size={18} className="text-rojo" /> Registrar Solicitud
           </h2>
@@ -169,6 +173,7 @@ export default function Servicios() {
           </div>
           <button type="submit" className="w-full lumo-btn-danger py-3">Registrar Solicitud</button>
         </form>
+        )}
 
         <div className="mb-4">
           <h2 className="lumo-section-title mb-3">Casos Activos</h2>

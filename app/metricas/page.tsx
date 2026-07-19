@@ -112,7 +112,7 @@ export default function Metricas() {
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-sm text-ink-soft leading-none mb-0.5 capitalize">indicadores de {nombreMes}</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Métricas</h1>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">Métricas</h1>
         </div>
         <Link href="/mas" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">
           ← Volver
@@ -125,7 +125,6 @@ export default function Metricas() {
         <div>
           <h2 className="lumo-section-title mb-3">Producción del Mes (Prima Ganada)</h2>
           <div className="relative bg-azul p-6 rounded-2xl shadow-sm">
-            <span className="lumo-tape"></span>
             <p className="text-sm text-white/80 font-medium">Total de Primas Emitidas/Ganadas</p>
             <p className="text-3xl font-bold text-white tracking-tighter mt-2">
               ${primaTotal.toLocaleString('es-MX', { minimumFractionDigits: 0 })}

@@ -16,6 +16,7 @@ type Aseguradora = {
 
 export default function Mas() {
   const [nombre, setNombre] = useState('AXA');
+  const [mostrarForm, setMostrarForm] = useState(false);
   const [portalUrl, setPortalUrl] = useState('');
   const [usuario, setUsuario] = useState('');
   const [ejecutivo, setEjecutivo] = useState('');
@@ -62,8 +63,11 @@ export default function Mas() {
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
           <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">directorio y herramientas</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Configuración</h1>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">Configuración</h1>
         </div>
+        <button onClick={() => setMostrarForm(!mostrarForm)} className={`text-sm px-3.5 py-2 rounded-xl font-semibold flex items-center gap-1.5 transition-colors mb-1 ${mostrarForm ? 'bg-elevada text-ink border border-ink/15' : 'lumo-btn-primary'}`}>
+          <Icon name="plus" size={15} /> {mostrarForm ? 'Cerrar' : 'Agregar'}
+        </button>
         <Link href="/" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Inicio</Link>
       </header>
 
@@ -79,8 +83,8 @@ export default function Mas() {
           <Icon name="arrow" size={22} className="text-white" />
         </Link>
 
+{mostrarForm && (
         <form onSubmit={guardarAseguradora} className="lumo-card relative p-5 space-y-4">
-          <span className="lumo-tape"></span>
           <h2 className="font-bold text-ink text-lg flex items-center gap-2">
             <Icon name="shield" size={18} className="text-azul" /> Agregar Aseguradora
           </h2>
@@ -95,6 +99,7 @@ export default function Mas() {
 
           <button type="submit" className="w-full lumo-btn-primary py-3">Guardar</button>
         </form>
+        )}
 
         <div>
           <h2 className="lumo-section-title mb-3">Mis Aseguradoras</h2>

@@ -244,11 +244,11 @@ export default function Home() {
         <div>
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg" />
-            <h1 className="text-2xl font-bold text-ink tracking-tight">Hoy</h1>
+            <h1 className="text-3xl font-bold text-ink tracking-tight">Hoy</h1>
           </div>
-          {usuarioEmail && (
-            <p className="text-xs text-ink-faint mt-0.5 truncate max-w-[200px]">{usuarioEmail}</p>
-          )}
+          <p className="text-sm text-ink-soft mt-0.5">
+            {new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'} · aquí está lo más importante.
+          </p>
         </div>
         <div className="flex gap-2 pb-1">
           <Link href="/mas" className="lumo-btn-ghost text-xs px-3 py-2 flex items-center gap-1.5">
@@ -265,11 +265,13 @@ export default function Home() {
 
       <main className="p-4 space-y-4">
 
-        {/* Alertas Rojas (Urgente) */}
+        {/* A · URGENTE: lo que no puede esperar */}
+        {(prospectosOlvidados > 0 || tramitesAtorados > 0 || decisiones.some(d => d.urgente)) && (
+          <h2 className="lumo-section-title px-1 text-rojo">A · Urgente</h2>
+        )}
         <div className="space-y-3">
           {prospectosOlvidados > 0 && (
             <Link href="/prospectos" className="block relative lumo-card border-l-4 border-l-rojo p-4 hover:shadow-md transition-shadow">
-              <span className="lumo-tape"></span>
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-rojo text-xs font-bold uppercase tracking-wider mb-1">Urgente</p>
@@ -295,36 +297,57 @@ export default function Home() {
           )}
         </div>
 
-        {/* LUMO · Centro de decisiones */}
-        {decisiones.length > 0 && (
+        {/* Decisiones urgentes (leads sin contactar) viven en A */}
+        {decisiones.filter(d => d.urgente).length > 0 && (
           <div>
-            <h2 className="lumo-section-title mb-2 px-1 flex items-center gap-2">
-              <span className="w-4 h-4 bg-azul rounded flex items-center justify-center text-white"><Icon name="hoy" size={11} /></span>
-              LUMO necesita tu decisión
-            </h2>
             <div className="space-y-3">
-              {decisiones.map(d => (
-                <div key={d.clave} className={`lumo-card p-4 ${d.urgente ? 'border-l-4 border-l-rojo' : ''}`}>
-                  {d.urgente && (
-                    <p className="text-rojo text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Icon name="alert" size={12} /> Urgente · lead sin contactar</p>
-                  )}
+              {decisiones.filter(d => d.urgente).map(d => (
+                <div key={d.clave} className="lumo-card p-4 border-l-4 border-l-rojo">
+                  <p className="text-rojo text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><Icon name="alert" size={12} /> Urgente · lead sin contactar</p>
                   <p className="font-bold text-ink">{d.nombre}</p>
                   <p className="text-sm text-ink font-medium mt-0.5">{d.pregunta}</p>
-                  <p className="text-xs text-ink-soft mt-1">{d.razon}</p>
+                  <p className="text-sm text-ink-soft mt-1">{d.razon}</p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    {d.urgente && (
-                      <Link href={d.href} className="lumo-btn-danger px-4 py-2 text-xs">Abrir ficha</Link>
-                    )}
+                    <Link href={d.href} className="lumo-btn-danger px-4 py-2 text-sm">Abrir ficha</Link>
                     <button
                       onClick={() => resolverDecision(d, true)}
-                      className={`px-4 py-2 text-xs ${d.urgente ? 'lumo-btn-ghost' : 'lumo-btn-primary'}`}
+                      className="px-4 py-2 text-sm lumo-btn-ghost"
                     >{d.etiquetaSi}</button>
-                    {!d.urgente && (
-                      <Link href={d.href} className="lumo-btn-ghost px-4 py-2 text-xs">Revisar</Link>
-                    )}
                     <button
                       onClick={() => resolverDecision(d, false)}
-                      className="text-ink-faint hover:text-ink text-xs px-2"
+                      className="text-ink-faint hover:text-ink text-sm px-2"
+                    >Ignorar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* B · HOY: el trabajo del día */}
+        <h2 className="lumo-section-title px-1 text-azul">B · Hoy</h2>
+
+        {decisiones.filter(d => !d.urgente).length > 0 && (
+          <div>
+            <h3 className="lumo-section-title mb-2 px-1 flex items-center gap-2">
+              <span className="w-4 h-4 bg-azul rounded flex items-center justify-center text-white"><Icon name="hoy" size={11} /></span>
+              LUMO necesita tu decisión
+            </h3>
+            <div className="space-y-3">
+              {decisiones.filter(d => !d.urgente).map(d => (
+                <div key={d.clave} className="lumo-card p-4">
+                  <p className="font-bold text-ink">{d.nombre}</p>
+                  <p className="text-sm text-ink font-medium mt-0.5">{d.pregunta}</p>
+                  <p className="text-sm text-ink-soft mt-1">{d.razon}</p>
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    <button
+                      onClick={() => resolverDecision(d, true)}
+                      className="px-4 py-2 text-sm lumo-btn-primary"
+                    >{d.etiquetaSi}</button>
+                    <Link href={d.href} className="lumo-btn-ghost px-4 py-2 text-sm">Revisar</Link>
+                    <button
+                      onClick={() => resolverDecision(d, false)}
+                      className="text-ink-faint hover:text-ink text-sm px-2"
                     >Ignorar</button>
                   </div>
                 </div>
@@ -335,7 +358,7 @@ export default function Home() {
 
         {/* Tarjetas Principales (Cuaderno) */}
         <div>
-          <h2 className="lumo-section-title mb-2 px-1">Tu Cuaderno</h2>
+          <h3 className="lumo-section-title mb-2 px-1">Tu Cuaderno</h3>
           <div className="grid grid-cols-2 gap-3">
 
             <Link href="/agenda" className="lumo-card px-3.5 py-3 hover:border-azul transition-colors flex items-center gap-3">
@@ -354,21 +377,24 @@ export default function Home() {
               </div>
             </Link>
 
-            <Link href="/clientes" className="col-span-2 bg-azul px-4 py-3 rounded-2xl shadow-sm hover:bg-azul-dark transition-colors flex items-center gap-3">
-              <Icon name="refresh" size={22} className="text-white/80 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-2xl font-bold text-white tracking-tighter leading-none">{totalRenovaciones}</p>
-                <p className="text-sm text-white/80 font-medium mt-0.5 leading-tight">Renovaciones en 30 días</p>
-              </div>
-              <p className="text-azul text-xs font-bold uppercase tracking-wider bg-card px-3 py-1.5 rounded-full shrink-0">Atender</p>
-            </Link>
-
           </div>
         </div>
 
+        {/* C · PRÓXIMAMENTE: lo que viene */}
+        <h2 className="lumo-section-title px-1">C · Próximamente</h2>
+
+        <Link href="/clientes" className="bg-azul px-4 py-3 rounded-2xl shadow-sm hover:bg-azul-dark transition-colors flex items-center gap-3">
+          <Icon name="refresh" size={22} className="text-white/80 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-2xl font-bold text-white tracking-tighter leading-none">{totalRenovaciones}</p>
+            <p className="text-sm text-white/80 font-medium mt-0.5 leading-tight">Renovaciones en 30 días</p>
+          </div>
+          <p className="text-azul text-xs font-bold uppercase tracking-wider bg-white px-3 py-1.5 rounded-full shrink-0">Atender</p>
+        </Link>
+
         {/* Navegación Rápida (Diario) */}
         <div>
-          <h2 className="lumo-section-title mb-2 px-1">Tu Diario</h2>
+          <h3 className="lumo-section-title mb-2 px-1">Tu Diario</h3>
           <div className="lumo-card divide-y divide-ink/5 overflow-hidden">
             <Link href="/ventas" className="flex items-center justify-between px-3.5 py-3 hover:bg-paper transition-colors">
               <div className="flex items-center gap-3">

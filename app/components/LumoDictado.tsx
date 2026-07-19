@@ -112,7 +112,7 @@ export default function LumoDictado() {
       <button
         onClick={grabando ? detenerGrabacion : empezarGrabacion}
         disabled={cargandoIA}
-        className={`fixed bottom-24 right-4 z-50 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white transition-all ${grabando ? 'bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
+        className={`fixed bottom-24 right-4 z-50 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white transition-all ${grabando ? 'bg-rojo animate-pulse' : 'bg-azul hover:bg-azul-dark'}`}
       >
         {cargandoIA
           ? <span className="animate-pulse"><Icon name="refresh" size={24} /></span>
@@ -122,14 +122,14 @@ export default function LumoDictado() {
       {/* Tarjeta de Confirmación (El Poka-Yoke) */}
       {datos && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-xl font-bold text-black">LUMO entendió esto:</h3>
+          <div className="lumo-card p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-xl font-bold text-ink">LUMO entendió esto:</h3>
             
             <div className="bg-gray-100 p-3 rounded-lg text-sm text-gray-600 italic">
               "{textoOriginal}"
             </div>
 
-            <div className="space-y-2 text-black">
+            <div className="space-y-2 text-ink">
               {datos.nombre && <p><strong>Nombre:</strong> {datos.nombre}</p>}
               {datos.telefono && <p><strong>Teléfono:</strong> {datos.telefono}</p>}
               {datos.producto && <p><strong>Producto:</strong> {datos.producto}</p>}

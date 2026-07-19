@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { BottomNav, Icon, SkeletonPantalla } from '../../components/lumo';
+import { BottomNav, Icon, SkeletonPantalla, SeccionColapsable } from '../../components/lumo';
+import TelefonoInput from '../../components/TelefonoInput';
+import { validarTelefonoOpcional, type PaisTelefono } from '../../lib/telefono';
 import {
   registrarActividad, sellarPrimerContacto, tiempoTranscurrido,
   ETIQUETAS_ACTIVIDAD, type Actividad,
@@ -41,6 +43,14 @@ export default function FichaProspecto() {
 
   const [nuevaAccion, setNuevaAccion] = useState('');
   const [nuevaFecha, setNuevaFecha] = useState('');
+
+  // Edición de datos (vive en la ficha; la lista es solo lectura)
+  const [editando, setEditando] = useState(false);
+  const [eNombre, setENombre] = useState('');
+  const [eTelefono, setETelefono] = useState('');
+  const [ePais, setEPais] = useState<PaisTelefono>('MX');
+  const [eProducto, setEProducto] = useState('');
+  const [eNota, setENota] = useState('');
 
   const [mostrarFormCita, setMostrarFormCita] = useState(false);
   const [citaFecha, setCitaFecha] = useState('');
@@ -271,6 +281,33 @@ export default function FichaProspecto() {
     setMostrarFormOpp(false); setOppPrima(''); cargarFicha(prospectoId);
   }
 
+  function iniciarEdicion() {
+    setENombre(prospecto?.nombre || '');
+    setETelefono(prospecto?.telefono || '');
+    setEPais(prospecto?.telefono_pais === 'US' ? 'US' : 'MX');
+    setEProducto(prospecto?.producto || '');
+    setENota(prospecto?.nota || '');
+    setEditando(true);
+  }
+
+  async function guardarEdicion(e: React.FormEvent) {
+    e.preventDefault();
+    const tel = validarTelefonoOpcional(eTelefono, ePais);
+    if (!tel.ok) { toast(tel.error); return; }
+    const { error } = await supabase.from('prospectos')
+      .update({ nombre: eNombre, telefono: tel.telefono, telefono_pais: tel.telefono ? ePais : null, producto: eProducto, nota: eNota })
+      .eq('id', prospectoId);
+    if (error) toast('Error al guardar la edición');
+    else { setEditando(false); toast('Datos actualizados', 'exito'); cargarFicha(prospectoId); }
+  }
+
+  async function eliminarProspecto() {
+    if (!(await confirmarLumo({ titulo: 'Eliminar prospecto', mensaje: 'Esta acción no se puede deshacer.', textoAceptar: 'Eliminar', peligro: true }))) return;
+    const { error } = await supabase.from('prospectos').delete().eq('id', prospectoId);
+    if (error) toast('Error al eliminar');
+    else router.push('/prospectos');
+  }
+
   async function convertirACliente() {
     if (!prospecto || convirtiendo) return; // guard anti doble-clic
     if (prospecto.cliente_id) {
@@ -331,75 +368,18 @@ export default function FichaProspecto() {
     <div className="min-h-screen pb-28 max-w-md lg:max-w-xl mx-auto">
       <header className="px-5 pt-5 pb-2.5 sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-ink/10 flex justify-between items-end">
         <div>
-          <p className="font-hand text-sm text-ink-soft leading-none mb-0.5">historial completo</p>
-          <h1 className="text-2xl font-bold text-ink tracking-tight">Ficha del Prospecto</h1>
+          <h1 className="text-2xl font-bold text-ink tracking-tight truncate max-w-[220px]">{prospecto?.nombre || 'Ficha'}</h1>
+          <p className="text-xs text-ink-soft mt-0.5">Prospecto · {prospecto?.estado}{prospecto?.producto ? ` · ${prospecto.producto}` : ''}</p>
         </div>
         <Link href="/prospectos" className="text-sm text-azul border border-ink/15 bg-card px-3 py-2 rounded-xl hover:bg-azul-soft font-semibold mb-1">← Volver</Link>
       </header>
 
       <main className="p-4 space-y-5">
 
-        {/* ── Briefing: el contexto en 20 segundos, antes de llamar ── */}
-        <div className="lumo-card relative p-4 border-l-4 border-l-azul">
-          <p className="text-xs text-azul uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
-            <Icon name="hoy" size={14} /> Antes de contactar
-          </p>
-
-          {/* ¿Dónde va esta persona en el proceso? */}
-          <div className="flex items-center gap-1 mb-3 flex-wrap">
-            {PASOS_PERSONA.map((p, i) => (
-              <span key={p.nombre} className="flex items-center gap-1">
-                <span className={`text-xs font-bold px-2 py-1 rounded-md ${
-                  p.hecho ? 'bg-verde-soft text-verde'
-                  : i === pasoActual ? 'bg-azul text-white'
-                  : 'bg-card text-ink-faint border border-ink/10'
-                }`}>
-                  {p.hecho ? '✓ ' : `${i + 1} `}{p.nombre}
-                </span>
-                {i < PASOS_PERSONA.length - 1 && <span className="text-ink-faint text-xs">→</span>}
-              </span>
-            ))}
-          </div>
-          <div className="text-sm text-ink space-y-1">
-            <p><span className="text-ink-faint">Interés:</span> <b>{prospecto?.producto || 'sin definir'}</b> · etapa <b>{prospecto?.estado}</b></p>
-            {ultimaActividad && (
-              <p><span className="text-ink-faint">Último movimiento:</span> {ETIQUETAS_ACTIVIDAD[ultimaActividad.tipo] || ultimaActividad.tipo} · {tiempoTranscurrido(ultimaActividad.created_at)}</p>
-            )}
-            {prospecto?.proxima_accion && (
-              <p><span className="text-ink-faint">Promesa pendiente:</span> {prospecto.proxima_accion} ({prospecto.fecha_proxima || 'sin fecha'})</p>
-            )}
-            {citaProxima && (
-              <p><span className="text-ink-faint">Próxima cita:</span> {citaProxima.tipo} el {citaProxima.fecha} a las {citaProxima.hora}</p>
-            )}
-            {prospecto?.nota_entrada_web && (
-              <p><span className="text-ink-faint">Pidió en la web:</span> {prospecto.nota_entrada_web.slice(0, 120)}</p>
-            )}
-          </div>
-          <p className="text-sm font-bold text-azul mt-2">Objetivo: {objetivoSugerido}</p>
-        </div>
-
-        {/* ── Registro post-llamada de 1 toque ── */}
-        <div className="lumo-card p-4">
-          <p className="text-xs text-ink-soft uppercase tracking-wider font-bold mb-2">¿Cómo terminó el contacto?</p>
-          <div className="flex flex-wrap gap-2">
-            {['Respondió · interesado', 'Quiere cotización', 'No respondió', 'Pidió tiempo', 'No interesado'].map(r => (
-              <button
-                key={r}
-                disabled={registrandoResultado}
-                onClick={() => registrarResultado(r)}
-                className={`text-xs px-3 py-2 rounded-xl border font-semibold transition-colors disabled:opacity-40 ${
-                  r === 'No interesado'
-                    ? 'bg-rojo-soft text-rojo border-rojo/20 hover:bg-rojo hover:text-white'
-                    : 'bg-azul-soft text-azul border-azul/20 hover:bg-azul hover:text-white'
-                }`}
-              >{r}</button>
-            ))}
-          </div>
-          <p className="font-hand text-sm text-ink-faint mt-2">un toque: registra el resultado, ajusta la etapa y agenda lo que sigue.</p>
-        </div>
+        {/* ── A · ESTADO ACTUAL ── */}
+        <h2 className="lumo-section-title px-1">A · Estado actual</h2>
 
         <div className="lumo-card relative p-5">
-          <span className="lumo-tape"></span>
           <h2 className="text-xl font-bold text-ink">{prospecto?.nombre}</h2>
           <p className="text-sm text-ink-soft mt-1 flex items-center gap-1.5">
             <Icon name="phone" size={14} /> {prospecto?.telefono ? formatearTelefono(prospecto.telefono) : 'Sin teléfono'}
@@ -449,6 +429,67 @@ export default function FichaProspecto() {
               </div>
             </div>
           )}
+        </div>
+        {/* ── Briefing: el contexto en 20 segundos, antes de llamar ── */}
+        <div className="lumo-card relative p-4 border-l-4 border-l-azul">
+          <p className="text-xs text-azul uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+            <Icon name="hoy" size={14} /> Antes de contactar
+          </p>
+
+          {/* ¿Dónde va esta persona en el proceso? */}
+          <div className="flex items-center gap-1 mb-3 flex-wrap">
+            {PASOS_PERSONA.map((p, i) => (
+              <span key={p.nombre} className="flex items-center gap-1">
+                <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                  p.hecho ? 'bg-verde-soft text-verde'
+                  : i === pasoActual ? 'bg-azul text-white'
+                  : 'bg-card text-ink-faint border border-ink/10'
+                }`}>
+                  {p.hecho ? '✓ ' : `${i + 1} `}{p.nombre}
+                </span>
+                {i < PASOS_PERSONA.length - 1 && <span className="text-ink-faint text-xs">→</span>}
+              </span>
+            ))}
+          </div>
+          <div className="text-sm text-ink space-y-1">
+            <p><span className="text-ink-faint">Interés:</span> <b>{prospecto?.producto || 'sin definir'}</b> · etapa <b>{prospecto?.estado}</b></p>
+            {ultimaActividad && (
+              <p><span className="text-ink-faint">Último movimiento:</span> {ETIQUETAS_ACTIVIDAD[ultimaActividad.tipo] || ultimaActividad.tipo} · {tiempoTranscurrido(ultimaActividad.created_at)}</p>
+            )}
+            {prospecto?.proxima_accion && (
+              <p><span className="text-ink-faint">Promesa pendiente:</span> {prospecto.proxima_accion} ({prospecto.fecha_proxima || 'sin fecha'})</p>
+            )}
+            {citaProxima && (
+              <p><span className="text-ink-faint">Próxima cita:</span> {citaProxima.tipo} el {citaProxima.fecha} a las {citaProxima.hora}</p>
+            )}
+            {prospecto?.nota_entrada_web && (
+              <p><span className="text-ink-faint">Pidió en la web:</span> {prospecto.nota_entrada_web.slice(0, 120)}</p>
+            )}
+          </div>
+          <p className="text-sm font-bold text-azul mt-2">Objetivo: {objetivoSugerido}</p>
+        </div>
+
+        {/* ── B · ACCIÓN RECOMENDADA ── */}
+        <h2 className="lumo-section-title px-1">B · Acción recomendada</h2>
+
+        {/* ── Registro post-llamada de 1 toque ── */}
+        <div className="lumo-card p-4">
+          <p className="text-xs text-ink-soft uppercase tracking-wider font-bold mb-2">¿Cómo terminó el contacto?</p>
+          <div className="flex flex-wrap gap-2">
+            {['Respondió · interesado', 'Quiere cotización', 'No respondió', 'Pidió tiempo', 'No interesado'].map(r => (
+              <button
+                key={r}
+                disabled={registrandoResultado}
+                onClick={() => registrarResultado(r)}
+                className={`text-xs px-3 py-2 rounded-xl border font-semibold transition-colors disabled:opacity-40 ${
+                  r === 'No interesado'
+                    ? 'bg-rojo-soft text-rojo border-rojo/20 hover:bg-rojo hover:text-white'
+                    : 'bg-azul-soft text-azul border-azul/20 hover:bg-azul hover:text-white'
+                }`}
+              >{r}</button>
+            ))}
+          </div>
+          <p className="text-sm text-ink-soft mt-2">Un toque registra el resultado, ajusta la etapa y agenda lo que sigue.</p>
         </div>
 
         {mostrarFormCita && (
@@ -519,6 +560,9 @@ export default function FichaProspecto() {
           </form>
         )}
 
+        {/* ── C · HISTORIAL Y DETALLES ── */}
+        <h2 className="lumo-section-title px-1">C · Historial y detalles</h2>
+
         <div className="lumo-card border-l-4 border-l-rojo p-4">
           <p className="text-xs text-rojo uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
             <Icon name="alert" size={14} /> Próxima Acción
@@ -531,7 +575,7 @@ export default function FichaProspecto() {
               </p>
             </div>
           ) : (
-            <p className="font-hand text-lg text-ink-faint">no hay próxima acción definida</p>
+            <p className="text-sm text-rojo font-semibold">Sin próxima acción definida: defínela abajo.</p>
           )}
           <form onSubmit={guardarProximaAccion} className="mt-4 pt-4 border-t border-ink/10 space-y-2">
             <p className="text-xs text-ink-soft font-semibold">Actualizar manualmente:</p>
@@ -541,8 +585,7 @@ export default function FichaProspecto() {
           </form>
         </div>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Descubrimientos Realizados</h3>
+        <SeccionColapsable titulo="Diagnósticos" n={diagnosticos.length}>
           <div className="space-y-2">
             {diagnosticos.map(d => (
               <div key={d.id} className="lumo-card p-3 text-sm">
@@ -556,12 +599,11 @@ export default function FichaProspecto() {
                 </div>
               </div>
             ))}
-            {diagnosticos.length === 0 && <p className="font-hand text-lg text-ink-faint">sin diagnósticos registrados</p>}
+            {diagnosticos.length === 0 && <p className="font-hand text-lg text-ink-soft">sin diagnósticos registrados</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Cotizaciones Relacionadas</h3>
+        <SeccionColapsable titulo="Cotizaciones" n={oportunidades.length}>
           <div className="space-y-2">
             {oportunidades.map(o => (
               <div key={o.id} className="lumo-card p-3 text-sm flex justify-between items-center">
@@ -572,14 +614,13 @@ export default function FichaProspecto() {
                 <span className="lumo-chip lumo-chip-azul">{o.estado}</span>
               </div>
             ))}
-            {oportunidades.length === 0 && <p className="font-hand text-lg text-ink-faint">aún no hay cotizaciones para este prospecto</p>}
+            {oportunidades.length === 0 && <p className="font-hand text-lg text-ink-soft">aún no hay cotizaciones para este prospecto</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
         {/* ── Línea de tiempo universal ── */}
-        <div>
-          <h3 className="lumo-section-title mb-3">Línea de Tiempo</h3>
-          <div className="lumo-card divide-y divide-ink/5">
+        <SeccionColapsable titulo="Línea de tiempo" n={actividades.length}>
+          <div className="divide-y divide-ink/5">
             {actividades.map(a => (
               <div key={a.id} className="p-3 text-sm flex gap-3 items-start">
                 <span className="w-2 h-2 rounded-full bg-azul mt-1.5 shrink-0"></span>
@@ -591,13 +632,12 @@ export default function FichaProspecto() {
               </div>
             ))}
             {actividades.length === 0 && (
-              <p className="font-hand text-lg text-ink-faint p-4">aún no hay actividad registrada (corre la migración operativa)</p>
+              <p className="font-hand text-lg text-ink-soft p-4">aún no hay actividad registrada</p>
             )}
           </div>
-        </div>
+        </SeccionColapsable>
 
-        <div>
-          <h3 className="lumo-section-title mb-3">Historial de Citas</h3>
+        <SeccionColapsable titulo="Citas" n={citas.length}>
           <div className="space-y-2">
             {citas.map(c => (
               <div key={c.id} className="lumo-card p-3 text-sm flex justify-between items-center">
@@ -608,18 +648,47 @@ export default function FichaProspecto() {
                 <span className="lumo-chip">{c.estado}</span>
               </div>
             ))}
-            {citas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin citas registradas</p>}
+            {citas.length === 0 && <p className="font-hand text-lg text-ink-soft">sin citas registradas</p>}
           </div>
-        </div>
+        </SeccionColapsable>
 
         {prospecto?.estado !== 'Convertido' && (
           <div className="pt-4 border-t border-ink/10">
             <button onClick={convertirACliente} disabled={convirtiendo} className="w-full lumo-btn-primary py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50">
               <Icon name="rocket" size={18} /> {convirtiendo ? 'Convirtiendo…' : 'Convertir en Cliente (Venta Directa)'}
             </button>
-            <p className="text-center font-hand text-base text-ink-faint mt-2">¿el cliente compró sin embudo? úsalo sin culpa.</p>
+            <p className="text-center font-hand text-base text-ink-soft mt-2">¿el cliente compró sin embudo? úsalo sin culpa.</p>
           </div>
         )}
+
+        {/* ── Datos del registro: editar / eliminar ── */}
+        <div className="lumo-card p-4">
+          {editando ? (
+            <form onSubmit={guardarEdicion} className="space-y-3">
+              <p className="lumo-section-title">Editar datos</p>
+              <input type="text" value={eNombre} onChange={(e) => setENombre(e.target.value)} required className="lumo-input" placeholder="Nombre completo" />
+              <TelefonoInput value={eTelefono} onChange={setETelefono} pais={ePais} onChangePais={setEPais} />
+              <select value={eProducto} onChange={(e) => setEProducto(e.target.value)} className="lumo-input">
+                <option value="">Sin producto</option>
+                <option value="Vida">Vida</option>
+                <option value="Gastos Médicos">Gastos Médicos</option>
+                <option value="Auto">Auto</option>
+                <option value="Hogar">Hogar</option>
+                <option value="Retiro">Retiro</option>
+              </select>
+              <textarea value={eNota} onChange={(e) => setENota(e.target.value)} className="lumo-input resize-none" rows={2} placeholder="Nota" />
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 lumo-btn-primary py-2 text-sm">Guardar Cambios</button>
+                <button type="button" onClick={() => setEditando(false)} className="flex-1 lumo-btn-ghost py-2 text-sm">Cancelar</button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={iniciarEdicion} className="flex-1 lumo-btn-ghost py-2.5 text-sm flex items-center justify-center gap-1.5"><Icon name="edit" size={15} /> Editar datos</button>
+              <button onClick={eliminarProspecto} className="flex-1 lumo-btn-ghost py-2.5 text-sm text-rojo border-rojo/25 flex items-center justify-center gap-1.5"><Icon name="trash" size={15} /> Eliminar</button>
+            </div>
+          )}
+        </div>
 
       </main>
 
