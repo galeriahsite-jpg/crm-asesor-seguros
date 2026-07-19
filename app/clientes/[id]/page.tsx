@@ -248,8 +248,8 @@ export default function ExpedienteCliente() {
                   <span className="font-semibold flex items-center gap-1.5"><Icon name="shield" size={14} className="text-azul" /> {p.producto}</span>
                   <span className="text-ink-faint">{p.aseguradora}</span>
                 </div>
-                <p className="text-ink-soft text-xs mt-1">Póliza: {p.numero_poliza || 'N/A'}</p>
-                <p className="text-rojo text-xs mt-1 font-semibold">Vence: {formatearFecha(p.vencimiento)}</p>
+                <p className="text-sm text-ink-soft mt-1">Póliza: <span className="font-semibold text-ink">{p.numero_poliza || 'N/A'}</span></p>
+                <p className="text-sm text-rojo mt-1 font-semibold">Vence: {formatearFecha(p.vencimiento)}</p>
               </div>
             ))}
             {polizas.length === 0 && <p className="font-hand text-lg text-ink-faint">sin pólizas registradas</p>}
@@ -263,7 +263,7 @@ export default function ExpedienteCliente() {
               <div key={o.id} className="lumo-card p-3 text-sm flex justify-between items-center">
                 <div>
                   <p className="text-ink font-semibold">{o.producto}</p>
-                  <p className="text-ink-soft text-xs">Prima: {o.prima || 'N/A'}</p>
+                  <p className="text-sm text-ink-soft">Prima: <span className="font-semibold text-ink">{o.prima || 'N/A'}</span></p>
                 </div>
                 <span className="lumo-chip lumo-chip-azul">{o.estado}</span>
               </div>
@@ -279,7 +279,7 @@ export default function ExpedienteCliente() {
               <div key={c.id} className="lumo-card p-3 text-sm flex justify-between items-center">
                 <div>
                   <p className="text-ink font-semibold">{c.tipo}</p>
-                  <p className="text-ink-soft text-xs">{c.fecha} a las {c.hora}</p>
+                  <p className="text-sm text-ink-soft">{formatearFecha(c.fecha)} a las {c.hora}</p>
                 </div>
                 <span className="lumo-chip">{c.estado}</span>
               </div>
@@ -297,7 +297,7 @@ export default function ExpedienteCliente() {
                 <span className="w-2 h-2 rounded-full bg-azul mt-1.5 shrink-0"></span>
                 <div className="flex-1 min-w-0">
                   <p className="text-ink font-semibold">{ETIQUETAS_ACTIVIDAD[a.tipo] || a.tipo}</p>
-                  {a.descripcion && <p className="text-ink-soft text-xs mt-0.5 break-words">{a.descripcion}</p>}
+                  {a.descripcion && <p className="text-sm text-ink-soft mt-0.5 break-words">{a.descripcion}</p>}
                 </div>
                 <span className="text-ink-faint text-xs whitespace-nowrap">{tiempoTranscurrido(a.created_at)}</span>
               </div>
@@ -317,7 +317,7 @@ export default function ExpedienteCliente() {
                   <p className="text-ink font-semibold">{s.tipo}</p>
                   <span className="lumo-chip lumo-chip-rojo">{s.estado}</span>
                 </div>
-                <p className="text-ink-soft text-xs">{s.descripcion}</p>
+                <p className="text-sm text-ink-soft">{s.descripcion}</p>
               </div>
             ))}
             {servicios.length === 0 && <p className="font-hand text-lg text-ink-faint">sin servicios registrados</p>}

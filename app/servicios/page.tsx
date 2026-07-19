@@ -200,7 +200,7 @@ export default function Servicios() {
                       <p className="font-bold text-ink">{s.cliente}</p>
                       <p className="text-xs text-rojo mt-1 font-bold uppercase tracking-wide">{s.tipo}</p>
                       <p className="text-sm text-ink-soft mt-2">{s.descripcion}</p>
-                      {s.nota && <p className="text-sm font-hand text-ink-soft mt-2 bg-paper p-2 rounded-lg border border-ink/10">{s.nota}</p>}
+                      {s.nota && <p className="text-sm text-ink-soft mt-2 bg-paper p-2 rounded-lg border border-ink/10">&ldquo;{s.nota}&rdquo;</p>}
                     </div>
                     <div className="flex gap-1">
                       <button onClick={() => iniciarEdicion(s)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>
@@ -208,7 +208,7 @@ export default function Servicios() {
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">
-                    <select value={s.estado} onChange={(e) => cambiarEstadoServicio(s.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
+                    <select value={s.estado} onChange={(e) => cambiarEstadoServicio(s.id, e.target.value)} className="text-sm border border-ink/15 rounded-lg p-2 bg-card text-ink font-medium w-full focus:outline-none focus:border-azul">
                       <option value="Reportado">Reportado</option><option value="En proceso">En proceso</option><option value="Esperando respuesta">Esperando respuesta</option><option value="Resuelto">Resuelto</option><option value="Cerrado">Cerrado</option>
                     </select>
                   </div>

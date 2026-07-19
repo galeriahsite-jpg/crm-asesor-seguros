@@ -200,9 +200,9 @@ export default function Tramites() {
                     <div className="flex-1">
                       <p className="font-bold text-ink">{t.cliente}</p>
                       <div className="text-sm text-ink-soft mt-1">
-                        <p>{t.producto} - {t.aseguradora}</p>
-                        {t.folio && <p className="text-xs text-ink-faint">Folio: {t.folio}</p>}
-                        {t.nota && <p className="mt-1 font-hand text-base text-ink-soft">&ldquo;{t.nota}&rdquo;</p>}
+                        <p><span className="font-semibold text-ink">{t.producto}</span> · {t.aseguradora}</p>
+                        {t.folio && <p>Folio: <span className="font-semibold text-ink">{t.folio}</span></p>}
+                        {t.nota && <p className="mt-1 text-sm text-ink-soft bg-paper p-2 rounded-lg border border-ink/10">&ldquo;{t.nota}&rdquo;</p>}
                       </div>
                     </div>
                     <div className="flex gap-1">
@@ -211,7 +211,7 @@ export default function Tramites() {
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">
-                    <select value={t.estado} onChange={(e) => cambiarEstadoTramite(t.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
+                    <select value={t.estado} onChange={(e) => cambiarEstadoTramite(t.id, e.target.value)} className="text-sm border border-ink/15 rounded-lg p-2 bg-card text-ink font-medium w-full focus:outline-none focus:border-azul">
                       <option value="Pendiente de iniciar">Pendiente de iniciar</option><option value="En captura">En captura</option><option value="Información incompleta">Información incompleta</option><option value="Enviado a aseguradora">Enviado a aseguradora</option><option value="En revisión">En revisión</option><option value="Requisito adicional">Requisito adicional</option><option value="Evaluación médica">Evaluación médica</option><option value="Contrapropuesta">Contrapropuesta</option><option value="Aceptado">Aceptado</option><option value="Pago pendiente">Pago pendiente</option><option value="Emitido">Emitido</option><option value="Rechazado">Rechazado</option>
                     </select>
                   </div>

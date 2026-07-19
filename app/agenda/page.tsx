@@ -246,7 +246,7 @@ export default function Agenda() {
             <div key={g.clave}>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className={`lumo-chip ${g.chip}`}>{g.items.length}</span>
-                <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{g.titulo}</h3>
+                <h3 className="lumo-section-title">{g.titulo}</h3>
               </div>
               <div className="space-y-3">
                 {g.items.map((c) => (
@@ -276,8 +276,8 @@ export default function Agenda() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-bold text-ink">{c.titulo}</p>
-                      <p className="text-sm text-ink-soft mt-1 flex items-center gap-1.5">
-                        <Icon name="calendar" size={14} /> {formatearFecha(c.fecha)} a las {c.hora}
+                      <p className="text-sm text-ink font-semibold mt-1 flex items-center gap-1.5">
+                        <Icon name="calendar" size={14} className="text-ink-faint" /> {formatearFecha(c.fecha)} a las {c.hora}
                       </p>
                       <span className="lumo-chip lumo-chip-azul mt-2">{c.tipo}</span>
                     </div>
@@ -287,7 +287,7 @@ export default function Agenda() {
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-ink/10">
-                    <select value={c.estado} onChange={(e) => cambiarEstadoCita(c.id, e.target.value)} className="text-xs border border-ink/15 rounded-lg p-2 bg-card text-ink-soft font-medium w-full focus:outline-none focus:border-azul">
+                    <select value={c.estado} onChange={(e) => cambiarEstadoCita(c.id, e.target.value)} className="text-sm border border-ink/15 rounded-lg p-2 bg-card text-ink font-medium w-full focus:outline-none focus:border-azul">
                       <option value="Pendiente">Pendiente</option><option value="Realizada">Realizada</option><option value="Cancelada">Cancelada</option><option value="No asistió">No asistió</option><option value="Reprogramada">Reprogramada</option>
                     </select>
                   </div>

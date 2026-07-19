@@ -301,7 +301,7 @@ export default function Prospectos() {
             <div key={g.estado}>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className={`lumo-chip ${g.chip}`}>{g.items.length}</span>
-                <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{g.titulo}</h3>
+                <h3 className="lumo-section-title">{g.titulo}</h3>
               </div>
               <div className="space-y-3">
                 {g.items.map((p) => (
@@ -355,7 +355,7 @@ export default function Prospectos() {
                     <select
                       value={p.estado}
                       onChange={(e) => cambiarEstado(p.id, e.target.value)}
-                      className="text-xs border border-ink/15 rounded-lg p-2 bg-card focus:outline-none focus:border-azul text-ink-soft font-medium transition-all"
+                      className="text-sm border border-ink/15 rounded-lg p-2 bg-card focus:outline-none focus:border-azul text-ink font-medium transition-all"
                     >
                       <option value="Nuevo">Nuevo</option>
                       <option value="Contactado">Contactado</option>

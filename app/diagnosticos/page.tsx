@@ -239,7 +239,7 @@ export default function Diagnosticos() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-bold text-ink">{d.cliente}</p>
-                      <div className="text-xs text-ink-soft mt-2 space-y-1">
+                      <div className="text-sm text-ink-soft mt-2 space-y-1">
                         <p>Edad: {d.edad} · Dependientes: {d.dependientes || '0'}</p>
                         <p>Objetivo: <span className="text-ink font-semibold">{d.objetivo}</span></p>
                         <p>Presupuesto: <span className="text-ink font-semibold">{d.presupuesto || 'N/A'}</span></p>
@@ -247,7 +247,7 @@ export default function Diagnosticos() {
                           <Icon name="star" size={13} /> Sugerencia: {d.producto_sugerido}
                         </p>
                       </div>
-                      {d.nota && <p className="font-hand text-base text-ink-soft mt-2">&ldquo;{d.nota}&rdquo;</p>}
+                      {d.nota && <p className="text-sm text-ink-soft mt-2 bg-paper p-2 rounded-lg border border-ink/10">&ldquo;{d.nota}&rdquo;</p>}
                     </div>
                     <div className="flex gap-1">
                       <button onClick={() => iniciarEdicion(d)} className="text-ink-faint hover:text-azul p-2.5 -m-1.5" title="Editar"><Icon name="edit" size={17} /></button>

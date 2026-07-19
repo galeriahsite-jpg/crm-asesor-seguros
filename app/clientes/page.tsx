@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { BottomNav, Icon, FlujoProceso } from '../components/lumo';
 import { registrarActividad } from '../lib/actividades';
-import { validarTelefonoOpcional, enlaceWhatsApp, type PaisTelefono } from '../lib/telefono';
+import { validarTelefonoOpcional, enlaceWhatsApp, formatearTelefono, type PaisTelefono } from '../lib/telefono';
 import TelefonoInput from '../components/TelefonoInput';
 import { toast, confirmarLumo } from '../components/Notificaciones';
 
@@ -235,14 +235,14 @@ export default function Clientes() {
                       </Link>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-ink-soft flex items-center gap-1.5">
-                          <Icon name="phone" size={14} /> {c.telefono || 'Sin teléfono'}
+                          <Icon name="phone" size={14} /> {c.telefono ? formatearTelefono(c.telefono) : 'Sin teléfono'}
                         </span>
                         {c.telefono && (
                                                 <a 
                         href={enlaceWhatsApp(c.telefono, c.telefono_pais)} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-green-500 hover:text-green-400 text-xs bg-green-950/50 px-2 py-1 rounded-md border border-green-900"
+                        className="text-verde text-xs bg-verde-soft px-2 py-1 rounded-md border border-verde/20 font-semibold"
                       >
                         WhatsApp
                       </a>
@@ -263,8 +263,8 @@ export default function Clientes() {
                             <span className="font-semibold">{p.producto}</span>
                             <span className="text-ink-faint">{p.aseguradora}</span>
                           </div>
-                          <p className="text-ink-soft text-xs mt-1">Póliza: {p.numero_poliza || 'N/A'}</p>
-                          <p className="text-rojo text-xs mt-1 font-semibold">Vence: {p.vencimiento || 'N/A'}</p>
+                          <p className="text-sm text-ink-soft mt-1">Póliza: <span className="font-semibold text-ink">{p.numero_poliza || 'N/A'}</span></p>
+                          <p className="text-sm text-rojo mt-1 font-semibold">Vence: {p.vencimiento || 'N/A'}</p>
                         </div>
                       ))
                     ) : (
